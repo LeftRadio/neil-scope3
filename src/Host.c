@@ -18,27 +18,36 @@
 #include "Settings.h"
 #include "User_Interface.h"
 #include "Analog.h"
+#include "AutoCorrectCH.h"
 #include "Processing_and_output.h"
 #include "EPM570.h"
+#include "EPM570_Registers.h"
+#include "EPM570_GPIO.h"
+#include "Synchronization.h"
+#include "Sweep.h"
 #include "gInterface_MENU.h"
 #include "IQueue.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Host commands defines */
+#define OSC_LA_CMD						0x09
 #define ANALOG_IN_CMD					0x10
 #define ANALOG_DIV_CMD					0x11
 #define CALIBRATE_ZERO_CMD				0x12
 
 #define SYNC_MODE_CMD					0x14
 #define TRIG_SOURSE_CMD					0x15
-#define TRIG_MODE_CMD					0x16
+#define TRIG_TYPE_CMD					0x16
 #define TRIG_LEVEL_UP_CMD				0x17
 #define TRIG_LEVEL_DOWN_CMD				0x18
 #define TRIG_CURSOR_X_CMD				0x19
+#define TRIG_MASK_DIFF_CMD				0x20
+#define TRIG_MASK_COND_CMD				0x21
 
 #define DECIMATION_CMD					0x25
-#define DATA_COLLECTION_MODE_CMD		0x27			// Standart or MIN/MAX mode
+#define DATA_COLLECTION_MODE_CMD		0x27			// STD, MIN/MAX, INTRL, RLE
 #define DATA_REQUEST_CMD				0x30
 
 #define BATT_V_CMD						0xA0
@@ -47,8 +56,8 @@
 #define HOST_MODE_CMD					0x81
 #define BOOTLOADER_CMD					0xB0
 #define FIRMWARE_VERSION_CMD			0x00
+#define SOFTWARE_VERSION_CMD			0x01
 
-//#define TERMINATE_CMD					0x50
 #define EXIT_HOST_MODE_CMD				0xFC
 
 /* Error type and codes defines */
@@ -65,11 +74,15 @@ static const uint8_t ExitHostModeRequest[4] = {EXIT_HOST_MODE_CMD, 0x02, 0x86, 0
 uint8_t CommandData[CMD_MAX_SIZE];
 uint8_t OUT_HostData[OUT_CMD_MAX_SIZE];
 uint8_t CMD_Length = 0;
+Boolean RLE_CodeSend = FALSE;
 
 FunctionalState HostMode = DISABLE;
 uint8_t ResponseCode;
-__IO HostRequest_TypeDef gHostRequest = { DISABLE, NO_Request, 0 };
+volatile HostRequest_TypeDef gHostRequest = { DISABLE, NO_Request, 0 };
 Channel_ID_TypeDef CalibrateChannel;
+
+char SoftwarwVersion[20] = "";
+const char* SoftwareName[2] = { "Connect 'NeilScope Software' ver", "Connect 'NeilLogic Analyzer' ver"};
 
 #ifdef __HOST_DEBUG__
 	char OLD_TransmitString[40] = {0};
@@ -80,19 +93,17 @@ Channel_ID_TypeDef CalibrateChannel;
 /* Private function prototypes -----------------------------------------------*/
 void Switch_To_HostMode(void);
 void Decoding_Command(void);
-uint8_t CRC8_Buff(uint8_t *pBuff, uint16_t NumBytes);
-uint8_t CRC8(uint8_t Byte, uint8_t crc);
-
 static __inline void Host_RequestProcessing(void);
+static void host_delay(volatile uint32_t delay_cnt);
+
 
 /* Private Functions ---------------------------------------------------------*/
 
-/*******************************************************************************
-* Function Name  : Recive_Host_Data
-* Description    :
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Recive_Host_Data
+  * @param  IQueueIndex - actived queue work index
+  * @retval None
+  */
 void Recive_Host_Data(uint8_t IQueueIndex)
 {
 	uint8_t i;
@@ -124,7 +135,7 @@ void Recive_Host_Data(uint8_t IQueueIndex)
 			if(memcmp(CommandData, HostModeRequest, 4) == 0) Switch_To_HostMode();
 			else if((CommandData[0] == BOOTLOADER_CMD) && (CommandData[2] == 0x0B))
 			{
-				gHostRequest.RequestDataLen = 0;
+				gHostRequest.DataLen = 0;
 				gHostRequest.State = ENABLE;
 				gHostRequest.Request = Bootoader_Request;
 			}
@@ -185,13 +196,12 @@ void Recive_Host_Data(uint8_t IQueueIndex)
 }
 
 
-/*******************************************************************************
-* Function Name  : Transmit_To_Host
-* Description    : Передача данных в хост
-* Input          : uint8_t *pData - указатель  на массив с данными
-* 				   uint8_t DataLen - количество пересылаемых байт
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Transmit_To_Host
+  * @param  *pData - pointer to transmited data
+  * 		DataLen - num bytes to transmit
+  * @retval None
+  */
 void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen)
 {
 	uint8_t ResponseHeader[3] = {0x5B, Respond_CMD, DataLen};
@@ -228,9 +238,9 @@ void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen)
 	while((USART1->SR & USART_FLAG_TXE) == (uint16_t)RESET);
 
 	/* Если режим однократной развертки то останавливаемся до перезапуска */
-	if((pnt_gOSC_MODE->oscSync == Sync_SINGL) && (pnt_gOSC_MODE->State == RUN) && (SRAM_GetWriteState() == COMPLETE))
+	if((gSyncState.Mode == Sync_SINGL) && (gOSC_MODE.State == RUN) && (EPM570_SRAM_GetWriteState() == COMPLETE))
 	{
-		pnt_gOSC_MODE->State = STOP;
+		gOSC_MODE.State = STOP;
 	}
 #ifdef __HOST_DEBUG__
 	if(i < 5) sprintf(&TransmitString[(DataLen*5)+15], "0x%02X", Control_CRC);
@@ -240,36 +250,64 @@ void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen)
 }
 
 
-/*******************************************************************************
-* Function Name  : Transmit_DataBuf_To_Host
-* Description    : Передача данных SRAM в хост
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Transmit_DataBuf_To_Host
+  * @param  None
+  * @retval None
+  */
 void Transmit_DataBuf_To_Host(void)
 {
-	uint8_t ResponseDataBufHeader[8] = {0x5B, 0x70, 0x04, 0x00, 0x00, 0x00, 0x00, 0xFF};
-
+	uint8_t ResponseDataBufHeader[8] = { 0x5B, 0x70, 0x04, 0x00, 0x00, 0x00, 0x00, 0xFF };
 	uint8_t Data_A, Data_B, *pData;
 	uint8_t Control_CRC = 0;
-	uint32_t i;//, Timeout;
-	uint32_t FullPacked = 0, DataCnt = 64000;
+	uint32_t i;
+	uint32_t FullPacked = 0, DataCnt = 0;
+	uint32_t DataLen = 0;
 
 	/* select Channel */
-	if((gOSC_MODE.Interleave == TRUE) || (pINFO == &INFO_A)){ pData = &Data_A;	ResponseDataBufHeader[6] = CHANNEL_A; }
-	else{ pData = &Data_B; ResponseDataBufHeader[6] = CHANNEL_B; }
-
-	if(Get_AutoDivider_State(pINFO->Mode.ID) == ENABLE)
+	if((gOSC_MODE.Interleave == TRUE) || (pINFO == &INFO_A))
 	{
-		ResponseDataBufHeader[7] = pINFO->AD_Type.Analog.Div;
-
+		pData = &Data_A;
+		ResponseDataBufHeader[6] = CHANNEL_A;
+	}
+	else if (pINFO == &INFO_B)
+	{
+		pData = &Data_B;
+		ResponseDataBufHeader[6] = CHANNEL_B;
+	}
+	else
+	{
+		if (RLE_CodeSend == TRUE) pData = &Data_B;
+		else pData = &Data_A;
+		ResponseDataBufHeader[6] = CHANNEL_DIGIT;
 	}
 
-	while(gHostRequest.RequestDataLen >= 64000){ gHostRequest.RequestDataLen -= 64000; FullPacked++; }
-	while((FullPacked > 0) || (gHostRequest.RequestDataLen > 0))
+	if(Get_AutoDivider_State(pINFO->Mode.ID) == ENABLE) ResponseDataBufHeader[7] = pINFO->AD_Type.Analog.Div;
+
+	/* Roll back to start read data point */
+	EPM570_SRAM_ReadState(DISABLE);
+	EPM570_SRAM_Shift(0x7fffffff, SRAM_READ_DOWN);
+
+	/* Prepare SRAM to read, read and send data to Host */
+	EPM570_SRAM_ReadState(ENABLE);
+
+
+	DataLen = gHostRequest.DataLen;
+	while(gHostRequest.DataLen > 64000){ gHostRequest.DataLen -= 64000; FullPacked++; }
+	while((FullPacked > 0) || (gHostRequest.DataLen > 0))
 	{
-		if(FullPacked == 0){ DataCnt = gHostRequest.RequestDataLen; gHostRequest.RequestDataLen = 0; }
-		else{ DataCnt = 64000; FullPacked--; }
+		if(FullPacked == 0)
+		{
+			DataCnt = gHostRequest.DataLen;
+			gHostRequest.DataLen = 0;
+		}
+		else
+		{
+			DataCnt = 64000;
+			FullPacked--;
+		}
+
+		if((DataLen > 64000) && (DataCnt != 0)) host_delay(2000000);
 
 		TIM2->DIER &= ~TIM_DIER_UIE;
 
@@ -286,45 +324,47 @@ void Transmit_DataBuf_To_Host(void)
 			Control_CRC = CRC8(ResponseDataBufHeader[i], Control_CRC);
 		}
 
-		/* Prepare SRAM to read, read and send data to Host */
-		SRAM_ReadDirection(SRAM_READ_DOWN);
-
-		/* Enable read state for capture data */
-		SRAM_ReadState(ENABLE);
-
 		for(i = 0; i < DataCnt; i++)
 		{
 			/* If a Terminate command recived */
 			if(IQueue_CommandStatus == FALSE){ break; }
 
-			if(gOSC_MODE.Interleave == TRUE)
+			if( (gOSC_MODE.Mode == OSC_MODE) && (gOSC_MODE.Interleave == TRUE) )
 			{
-				Set_EPM570_RS(SET);
+				EPM570_GPIO_RS(SET);
 				Data_A = ~(GPIOB->IDR >> 8);
 
 				USART1->DR = *pData;
 				while((USART1->SR & USART_FLAG_TXE) == (uint16_t)RESET);
 				Control_CRC = CRC8(*pData, Control_CRC);
 
-				Set_EPM570_RS(RESET);
+				EPM570_GPIO_RS(RESET);
 				Data_A = ~(GPIOB->IDR >> 8);
 				Data_A -= InterliveCorrectionCoeff;
 
 				i++;
 			}
-			else
+			else if(gOSC_MODE.Mode != LA_MODE)
 			{
-				Set_EPM570_RS(SET);
+				EPM570_GPIO_RS(SET);
 				Data_A = ~(GPIOB->IDR >> 8);
 
-				Set_EPM570_RS(RESET);
+				EPM570_GPIO_RS(RESET);
 				Data_B = ~(GPIOB->IDR >> 8);
 
-				if((ActiveMode != &IntMIN_MAX) && (pnt_gOSC_MODE->oscSweep != 0))
+				if( (ActiveMode != &IntMIN_MAX) && (gSamplesWin.Sweep != 0) )
 				{
-					Set_EPM570_RS(SET);
-					Set_EPM570_RS(RESET);
+					EPM570_GPIO_RS(SET);
+					EPM570_GPIO_RS(RESET);
 				}
+			}
+			else
+			{
+				EPM570_GPIO_RS(SET);
+				Data_A = ~(GPIOB->IDR >> 8);
+
+				EPM570_GPIO_RS(RESET);
+				Data_B = (GPIOB->IDR >> 8);
 			}
 
 			USART1->DR = *pData;
@@ -336,15 +376,7 @@ void Transmit_DataBuf_To_Host(void)
 			{
 				pINFO->DATA[i] = (*pData) - 127;
 			}
-
-			/* small delay to avoid CP2102 buffer overflow */
-			if((i != 0) && ((i%300) == 0))
-			{
-				delay_ms(15);
-			}
 		}
-
-		SRAM_ReadState(DISABLE);
 
 		/* send CRC to Host */
 		Control_CRC = CRC8(0, Control_CRC);
@@ -353,15 +385,17 @@ void Transmit_DataBuf_To_Host(void)
 
 		TIM2->DIER |= TIM_DIER_UIE;
 	}
+
+	/* Disable read state for SRAM */
+	EPM570_SRAM_ReadState(DISABLE);
 }
 
 
-/*******************************************************************************
-* Function Name  : Decoding_Command
-* Description    :
-* Input          :
-* Return         :
-*******************************************************************************/
+/**
+  * @brief  Decoding_Command
+  * @param  None
+  * @retval None
+  */
 void Decoding_Command(void)
 {
 	uint8_t trDataLen;
@@ -371,6 +405,28 @@ void Decoding_Command(void)
 	/* Switch recived command from host */
 	switch(CommandData[0])
 	{
+		/* --- Oscilloscope or logic analyzer mode command --- */
+		case OSC_LA_CMD:
+		{
+			if(CommandData[2] <= 0x01)
+			{
+				gOSC_MODE.Mode = (OSC_LA_Mode_Typedef)CommandData[2];
+
+				/* Sync and data sourses */
+				EPM570_Set_AnalogDigital_DataInput(gOSC_MODE.Mode);
+				gSyncState.Sourse = CHANNEL_DIGIT;
+				pINFO = &DINFO_A;
+
+				/* info text */
+				LCD_ClearArea(50, 200, 350, 220, 0x00);
+				LCD_SetFont(&arialUnicodeMS_16ptFontInfo);
+				if(gOSC_MODE.Mode == LA_MODE) LCD_PutColorStrig(135, 200, 0, "PC LA MODE", M256_Colors[180]);
+				else LCD_PutColorStrig(125, 200, 0, "PC OSC MODE", M256_Colors[230]);
+			}
+			else{ HostDataCorrect = ERROR; }
+		}
+		break;
+
 		/* --- Analog inputs mode - Open or Closed --- */
 		case ANALOG_IN_CMD:
 		{
@@ -381,7 +437,7 @@ void Decoding_Command(void)
 					if(CommandData[2] == 0){ INFO_A.Mode.EN = STOP; CommandData[2] = RUN_AC; }
 					else INFO_A.Mode.EN = RUN;
 					INFO_A.Mode.AC_DC = CommandData[2];
-					Set_Input(CHANNEL_A, INFO_A.Mode.AC_DC);
+					Analog_SetInput_ACDC(CHANNEL_A, INFO_A.Mode.AC_DC);
 				}
 
 				if(CommandData[3] < 3)
@@ -389,7 +445,7 @@ void Decoding_Command(void)
 					if(CommandData[3] == 0){ INFO_B.Mode.EN = STOP; CommandData[3] = RUN_AC; }
 					else INFO_B.Mode.EN = RUN;
 					INFO_B.Mode.AC_DC = CommandData[3];
-					Set_Input(CHANNEL_B, INFO_B.Mode.AC_DC);
+					Analog_SetInput_ACDC(CHANNEL_B, INFO_B.Mode.AC_DC);
 				}
 			}
 			else{ HostDataCorrect = ERROR; }
@@ -445,12 +501,19 @@ void Decoding_Command(void)
 		{
 			if(CommandData[2] <= 3)
 			{
-				if(CommandData[2] == 0) pnt_gOSC_MODE->oscSync = Sync_NONE;
-				else { pnt_gOSC_MODE->oscSync = (SyncMode_TypeDef)CommandData[2]; }
+				/* Set new sync mode */
+				if(gOSC_MODE.Mode == LA_MODE)
+				{
+					gSyncState.Sourse = CHANNEL_DIGIT;
+					gSyncState.Mode = Sync_NORM;
+				}
+				else
+				{
+					gSyncState.Mode = (SyncMode_TypeDef)CommandData[2];
+				}
 
-				/* Update synchronization */
-				Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);			// обновляем регистры синхронизации ПЛИС
-				EPM570_Sync(pnt_gOSC_MODE->oscSync);
+				gSyncState.foops->StateUpdate();
+				gSyncState.foops->SetTrigg_X(gSyncState.Cursor_X);
 			}
 			else HostDataCorrect = ERROR;
 		}
@@ -459,26 +522,30 @@ void Decoding_Command(void)
 		/* --- Trigger sourse command --- */
 		case TRIG_SOURSE_CMD:
 		{
-			if((CommandData[2] <= 2))
+			if(CommandData[2] <= 0x02)
 			{
-				pnt_gOSC_MODE->SyncSourse = CommandData[2];
+				gSyncState.Sourse = (Channel_ID_TypeDef)(CommandData[2]);
 
-				/* Update synchronization */
-				Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);			// обновляем регистры синхронизации ПЛИС
-				EPM570_Sync(pnt_gOSC_MODE->oscSync);
+				/* Update EPM570 sync and  num points registers */
+				gSyncState.foops->StateUpdate();
+				gSyncState.foops->SetTrigg_X(gSyncState.Cursor_X);
 			}
 			else{ HostDataCorrect = ERROR; }
 		}
 		break;
 
-		/* --- Synchronization mode command --- */
-		case TRIG_MODE_CMD:
+		/* --- Trigg mode command --- */
+		case TRIG_TYPE_CMD:
 		{
-			if(CommandData[2] <= 3)
+			/* analog, oscillocsope and logic analyzer modes */
+			if( ((CommandData[2] <= 3) && (gOSC_MODE.Mode == OSC_MODE)) || \
+				((CommandData[2] - 3 <= 4) && (gOSC_MODE.Mode == LA_MODE)) )
 			{
-				pnt_gOSC_MODE->AnalogSyncType = CommandData[2];
-				Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);	/* обновляем регистры синхронизации ПЛИС */
-				EPM570_Sync(pnt_gOSC_MODE->oscSync);
+				/* Set new sync mode */
+				gSyncState.Type = (SyncAType_TypeDef)CommandData[2];
+
+				gSyncState.foops->StateUpdate();
+				gSyncState.foops->SetTrigg_X(gSyncState.Cursor_X);
 			}
 			else{ HostDataCorrect = ERROR; }
 		}
@@ -487,39 +554,70 @@ void Decoding_Command(void)
 		/* --- Synchronization level "UP" cursor command --- */
 		case TRIG_LEVEL_UP_CMD:
 		{
-			Height_Y_cursor.Position = CommandData[2];
-			Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);	/* обновляем регистры синхронизации ПЛИС */
-			EPM570_Sync(pnt_gOSC_MODE->oscSync);
+			if(gOSC_MODE.Mode == LA_MODE) EPM570_Register_LA_CND_DAT.data = CommandData[2];
+			else Height_Y_cursor.Position = CommandData[2];
+
+			/* Update EPM570 sync registers */
+			gSyncState.foops->StateUpdate();
+//			gSyncState.foops->SetTrigg_X(gSyncState.Cursor_X);
 		}
 		break;
 
 		/* --- Synchronization level "DOWN" cursor command --- */
 		case TRIG_LEVEL_DOWN_CMD:
 		{
-			Low_Y_cursor.Position = CommandData[2];
-			Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);	/* обновляем регистры синхронизации ПЛИС */
-			EPM570_Sync(pnt_gOSC_MODE->oscSync);
+			if(gOSC_MODE.Mode == LA_MODE) EPM570_Register_LA_DIFF_DAT.data = CommandData[2];
+			else Low_Y_cursor.Position = CommandData[2];
+
+			/* Update EPM570 sync registers */
+			gSyncState.foops->StateUpdate();
+//			gSyncState.foops->SetTrigg_X(gSyncState.Cursor_X);
 		}
 		break;
 
 		/* --- Synchronization X cursor position command --- */
 		case TRIG_CURSOR_X_CMD:
 		{
-			trigPosX_cursor.Position = ((uint32_t)(CommandData[2])<<16) | ((uint32_t)(CommandData[3])<<8) | (CommandData[4]);
-			//((uint16_t)CommandData[2] << 8) | (uint16_t)CommandData[3];
-			Set_numPoints(pnt_gOSC_MODE->oscNumPoints);	   /* обновляем количество точек */
-			EPM570_Sync(pnt_gOSC_MODE->oscSync);
+			/* Set new position for trig X, update numPoints */
+			gSyncState.foops->StateUpdate();
+			gSyncState.foops->SetTrigg_X(((uint32_t)(CommandData[2])<<16) | ((uint32_t)(CommandData[3])<<8) | (CommandData[4]));
 		}
 		break;
 
+
+		/* --- Synchronization MASK different command --- */
+		case TRIG_MASK_DIFF_CMD:
+		{
+			EPM570_Register_LA_DIFF_MSK.data = CommandData[2];
+
+			if((EPM570_Register_LA_DIFF_MSK.data | EPM570_Register_LA_CND_MSK.data) != 0) gSyncState.Mode = Sync_NORM;
+			else gSyncState.Mode = Sync_NONE;
+
+			/* Update EPM570 sync registers */
+			gSyncState.foops->StateUpdate();
+		}
+		break;
+
+		/* --- Synchronization MASK condition command --- */
+		case TRIG_MASK_COND_CMD:
+		{
+			EPM570_Register_LA_CND_MSK.data = CommandData[2];
+
+			if((EPM570_Register_LA_DIFF_MSK.data | EPM570_Register_LA_CND_MSK.data) != 0) gSyncState.Mode = Sync_NORM;
+			else gSyncState.Mode = Sync_NONE;
+
+			/* Update EPM570 sync registers */
+			gSyncState.foops->StateUpdate();
+		}
+		break;
 
 		/* --- Decimation --- */
 		case DECIMATION_CMD:
 		{
 			if(CommandData[2] <= 0x14)
 			{
-				pnt_gOSC_MODE->oscSweep = sweep_coff[CommandData[2]] - 1;
-				Set_Decimation(pnt_gOSC_MODE->oscSweep);
+				gSamplesWin.Sweep = sweep_coff[CommandData[2]] - 1;
+				EPM570_Set_Decimation(gSamplesWin.Sweep);
 			}
 			else{ HostDataCorrect = ERROR; }
 		}
@@ -532,14 +630,26 @@ void Decoding_Command(void)
 			{
 				Inerlive_Cmd(ENABLE);
 				changeInterpolation((InterpolationMode_TypeDef*)InterpModes[1]);
-				Set_numPoints(pnt_gOSC_MODE->oscNumPoints); /* обновляем регистры ПЛИС */
+				EPM570_Set_numPoints(gOSC_MODE.oscNumPoints); /* обновляем регистры ПЛИС */
 			}
-			else if((CommandData[2] < 1) || (pnt_gOSC_MODE->oscSweep > 1))
+			else if((CommandData[2] == 0x03) && (gOSC_MODE.Mode == LA_MODE))
 			{
-				Inerlive_Cmd(DISABLE);
-				changeInterpolation((InterpolationMode_TypeDef*)InterpModes[CommandData[2] + 1]);
-				Set_numPoints(pnt_gOSC_MODE->oscNumPoints); /* обновляем регистры ПЛИС */
+				EPM570_Set_LA_RLE_State(ENABLE);
 			}
+			else if((CommandData[2] == 0) || (gSamplesWin.Sweep > 1))
+			{
+				if(gOSC_MODE.Mode == LA_MODE)
+				{
+					EPM570_Set_LA_RLE_State(DISABLE);
+				}
+				else
+				{
+					Inerlive_Cmd(DISABLE);
+					changeInterpolation((InterpolationMode_TypeDef*)InterpModes[CommandData[2] + 1]);
+					EPM570_Set_numPoints(gOSC_MODE.oscNumPoints); /* обновляем регистры ПЛИС */
+				}
+			}
+
 			else{ HostDataCorrect = ERROR; }
 		}
 		break;
@@ -547,15 +657,25 @@ void Decoding_Command(void)
 		/* --- Samples data request --- */
 		case DATA_REQUEST_CMD:
 		{
-			gHostRequest.RequestDataLen = ((uint32_t)(CommandData[2])<<10) + ((uint32_t)(CommandData[3])<<2) + (CommandData[4]>>6);
-			if((gHostRequest.RequestDataLen != 0) && (CommandData[5] <= 1))
+			gHostRequest.DataLen = ((uint32_t)(CommandData[2])<<10) + ((uint32_t)(CommandData[3])<<2) + (CommandData[4]>>6);
+
+			if(gHostRequest.DataLen != 0)
 			{
-				Set_CH_TypeINFO((Channel_ID_TypeDef)CommandData[5]);
-				if(ActiveMode == &IntMIN_MAX) gHostRequest.RequestDataLen *= 2;
-				if(gOSC_MODE.oscNumPoints != gHostRequest.RequestDataLen)
+				if(CommandData[5] <= 1)				/* OSC mode */
 				{
-					gOSC_MODE.oscNumPoints = gHostRequest.RequestDataLen;
-					Set_numPoints(gHostRequest.RequestDataLen);
+					Set_CH_TypeINFO((Channel_ID_TypeDef)CommandData[5]);
+					if(ActiveMode == &IntMIN_MAX) gHostRequest.DataLen *= 2;
+				}
+				else if(CommandData[5] == 2)		/* LA mode */
+				{
+					Set_CH_TypeINFO(CHANNEL_DIGIT);
+					if(EPM570_Get_LA_RLE_State() == ENABLE) gHostRequest.DataLen = 256000;
+				}
+
+				if(gOSC_MODE.oscNumPoints != gHostRequest.DataLen)
+				{
+					gOSC_MODE.oscNumPoints = gHostRequest.DataLen;
+					EPM570_Set_numPoints(gHostRequest.DataLen);
 				}
 
 				gHostRequest.State = ENABLE;
@@ -573,11 +693,6 @@ void Decoding_Command(void)
 			{
 				CommandData[2] = (uint8_t)ADC_VbattPrecent;
 			}
-//			else if(show_ADC_flag != SET)
-//			{
-//				HostDataCorrect = ERROR;
-//				ErrorCode = ErrorBusy;
-//			}
 			else HostDataCorrect = ERROR;
 		}
 		break;
@@ -588,8 +703,10 @@ void Decoding_Command(void)
 		{
 			if(CommandData[2] == 0xEE)
 			{
-				SavePreference();
-				HostDataCorrect = SUCCESS;
+				if(SavePreference() != 0)
+				{
+					HostDataCorrect = ERROR;
+				}
 			}
 			else { HostDataCorrect = ERROR; }
 		}
@@ -600,7 +717,7 @@ void Decoding_Command(void)
 		{
 			if(CommandData[2] == 0x0B)
 			{
-				gHostRequest.RequestDataLen = 0;
+				gHostRequest.DataLen = 0;
 				gHostRequest.State = ENABLE;
 				gHostRequest.Request = Bootoader_Request;
 
@@ -615,7 +732,9 @@ void Decoding_Command(void)
 		{
 			if(memcmp(CommandData, ExitHostModeRequest, 4) == 0)
 			{
-				Switch_To_AutoMode();
+				/* Reset (default start in automode) */
+				NVIC_SystemReset();
+//				Switch_To_AutoMode();
 				return;
 			}
 			else{ HostDataCorrect = ERROR; }
@@ -630,6 +749,20 @@ void Decoding_Command(void)
 				CommandData[2] = __FIRMWARE_VERSION__;
 			}
 			else{ HostDataCorrect = ERROR; }
+		}
+		break;
+
+		case SOFTWARE_VERSION_CMD:
+		{
+			memset(SoftwarwVersion, 0, 20);
+			sprintf(&SoftwarwVersion[0], "%d", CommandData[2]);
+			SoftwarwVersion[strlen(SoftwarwVersion)] = '.';
+			sprintf(&SoftwarwVersion[strlen(SoftwarwVersion)], "%d", CommandData[3]);
+
+			LCD_SetFont(&timesNewRoman12ptFontInfo);
+			LCD_SetTextColor(LighGreen);
+			uint16_t nx = LCD_PutStrig(10, 165, 0, (char*)SoftwareName[CommandData[4]]);
+			LCD_PutStrig(nx + 5, 165, 0, SoftwarwVersion);
 		}
 		break;
 
@@ -651,33 +784,60 @@ void Decoding_Command(void)
 		trDataLen = 1;
 	}
 
+	delay_ms(5);
 	Transmit_To_Host(ResponseCode, OUT_HostData, trDataLen);
 	//memset(CommandData, 0, 30);
 }
 
 
-/*******************************************************************************
-* Function Name  : Switch_To_HostMode
-* Description    :
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Switch_To_HostMode
+  * @param  None
+  * @retval None
+  */
 void Switch_To_HostMode(void)
 {
-	NVIC_DisableIRQ(TIM2_IRQn);	  // запрет прерываний таймера опроса кнопок
-	NVIC_DisableIRQ(RTC_IRQn);	  // запрет прерываний RTC
+	uint16_t tX = 0;
+	char str[4] = {0};
+	char* mcu_rev_str;
+	char mcu_dev_str[12] = "";
+	__IO unsigned int REV_ID, DEV_ID;
+
+	NVIC_DisableIRQ(TIM2_IRQn);
+	NVIC_DisableIRQ(RTC_IRQn);
+
+	gSyncState.foops->StateReset();
 
 	Beep_Start();
 	LCD_FillScreen(Black);
 	LCD_SetBackColor(Black);
 
+	REV_ID = DBGMCU_GetREVID();
+	DEV_ID = DBGMCU_GetDEVID();
+
+	/* Device revision ID and device ID */
+	if (REV_ID == 0x0000) mcu_rev_str = "A";
+	else if (REV_ID == 0x2000) mcu_rev_str = "B";
+	else if (REV_ID == 0x2001) mcu_rev_str = "Z";
+	else if (REV_ID == 0x2003) mcu_rev_str = "Y/1/2/X";
+	else mcu_rev_str = "-";
+	sprintf(mcu_dev_str, "0x%08X", DEV_ID);
+
 	/* Set Font and print message */
-	LCD_SetFont(&arialUnicodeMS_16ptFontInfo);
-	LCD_PutColorStrig(155, 200, 0, "PC MODE", LightGreen);
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
-	LCD_SetTextColor(Gray);
-	LCD_PutStrig(5, 170, 0, "Communicated with Neil Scope 3 Software");
-	LCD_PutStrig(5, 10, 0, "Big sanks Ildar aka 'Muha'");
+
+	ConvertToString(__FIRMWARE_VERSION__, str, 2);
+	tX = LCD_PutColorStrig(10, 145, 0, "MCU Firmware ver", Gray);
+	tX = LCD_PutColorStrig(tX, 145, 0, str, Gray);
+	tX = LCD_PutColorStrig(tX, 145, 0, "  rev", Gray);
+	tX = LCD_PutColorStrig(tX, 145, 0, __FIRMWARE_REVISION__, Gray);;
+
+	tX = LCD_PutColorStrig(10, 125, 0, "MCU REV ID: ", Gray);
+	tX = LCD_PutColorStrig(tX, 125, 0, mcu_rev_str, Gray);
+	tX = LCD_PutColorStrig(tX, 125, 0, "  DEV ID: ", Gray);
+	LCD_PutColorStrig(tX, 125, 0, mcu_dev_str, Gray);
+
+	LCD_PutColorStrig(10, 10, 0, "Big sanks Ildar aka 'Muha'", White);
 
 	Beep_Start();
 
@@ -686,44 +846,44 @@ void Switch_To_HostMode(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : Switch_To_AutoMode
-* Description    :
-* Input          : None
-* Return         : None
-*******************************************************************************/
-void Switch_To_AutoMode(void)
-{
-	NVIC_EnableIRQ(RTC_IRQn);
-
-	Beep_Start();
-	pnt_gOSC_MODE->oscSync = Sync_NONE;
-	External_Peripheral_Init();		// Инициализация и проверка внешней периферии
-	LoadPreference();				// Чтение сохраненных настроек из EEPROM
-	Draw_Interface();				// Нарисовать интерфейс
-	Sweep_Mode(TRUE);
-
-	GPIOC->BRR = GPIO_Pin_13;
-
-//	/* Configurate interlive control GPIO */
-//	Init_Inerlive_GPIO();
-
-	HostMode = DISABLE;
-}
-
-
-/*******************************************************************************
- * Function Name  : HostRequestProcessing
- * Description    :
- * Input          : None
- * Return         : None
- *******************************************************************************/
+/**
+  * @brief  Host_RequestReset
+  * @param  None
+  * @retval None
+  */
 static __inline void Host_RequestProcessing(void)
 {
 	if(gHostRequest.Request == Data_Request)
 	{
-		if(Write_SRAM() == COMPLETE)
+		if(pINFO == &DINFO_A)
 		{
+			EPM570_SRAM_Write();
+
+			RLE_CodeSend = FALSE;
+			Transmit_DataBuf_To_Host();
+
+			if(EPM570_Get_LA_RLE_State() == ENABLE)
+			{
+				gHostRequest.DataLen = 256000;
+				RLE_CodeSend = TRUE;
+				Transmit_DataBuf_To_Host();
+			}
+		}
+		else
+		{
+			/* if channel A actived */
+			if(INFO_A.Mode.EN == RUN)
+			{
+				/* if request for channel A start write to SRAM
+				 * if request for channel B write not necessary, data for ch B already in SRAM */
+				if(pINFO == &INFO_A) EPM570_SRAM_Write();
+			}
+			/* else if only channel B actived also start write to SRAM */
+			else if(INFO_B.Mode.EN == RUN)
+			{
+				EPM570_SRAM_Write();
+			}
+
 			Transmit_DataBuf_To_Host();
 			Analog_AutodividerMain();
 		}
@@ -741,27 +901,24 @@ static __inline void Host_RequestProcessing(void)
 }
 
 
-/*******************************************************************************
- * Function Name  : Host_RequestReset
- * Description    :
- * Input          : None
- * Return         : None
- *******************************************************************************/
+/**
+  * @brief  Host_RequestReset
+  * @param  None
+  * @retval None
+  */
 void Host_RequestReset(void)
 {
 	gHostRequest.State = DISABLE;
 	gHostRequest.Request = NO_Request;
-	gHostRequest.RequestDataLen = 0;
+	gHostRequest.DataLen = 0;
 }
 
 
-/*******************************************************************************
-* Function Name  : Get_CorrectionTerminate
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : uint16_t sum
-*******************************************************************************/
+/**
+  * @brief  Get_CorrectionTerminate
+  * @param  None
+  * @retval Host terminate command state
+  */
 FlagStatus Host_GetTerminateCmd(void)
 {
 	if(IQueue_CommandStatus == FALSE)
@@ -773,29 +930,63 @@ FlagStatus Host_GetTerminateCmd(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : CRC8 Buff
-* Description    :
-* Input          :
-* Return         :
-*******************************************************************************/
+/**
+  * @brief  Switch_To_AutoMode
+  * @param  None
+  * @retval None
+  */
+void Switch_To_AutoMode(void)
+{
+	Beep_Start();
+	External_Peripheral_Init();		// Инициализация и проверка внешней периферии
+	LoadPreference();				// Чтение сохраненных настроек из EEPROM
+	Draw_Interface();				// Нарисовать интерфейс
+
+	EPM570_Set_LA_RLE_State(DISABLE);
+	GPIOC->BRR = GPIO_Pin_13;
+	HostMode = DISABLE;
+
+	NVIC_EnableIRQ(RTC_IRQn);
+}
+
+
+/**
+  * @brief  host_delay
+  * @param  delay cnt value
+  * @retval None
+  */
+static void host_delay(volatile uint32_t delay_cnt)
+{
+	while(delay_cnt > 0){ delay_cnt--; }
+}
+
+
+/**
+  * @brief  CRC8_Buff
+  * @param  pointer to buff data and num bytes to calcul CRC
+  * @retval CRC value for buff
+  */
 uint8_t CRC8_Buff(uint8_t *pBuff, uint16_t NumBytes)
 {
    uint16_t i;
+   uint8_t *pbuff = pBuff;
    uint8_t crcBuff = 0x00;
 
-   for(i = 0; i < NumBytes; i++) crcBuff = CRC8(*(pBuff + i), crcBuff);
+   for(i = 0; i < NumBytes; i++)
+   {
+	   crcBuff = CRC8(*pbuff, crcBuff);
+	   pbuff++;
+   }
 
    return (crcBuff);
 }
 
 
-/*******************************************************************************
-* Function Name  : CRC8
-* Description    :
-* Input          :
-* Return         :
-*******************************************************************************/
+/**
+  * @brief  CRC8
+  * @param  byte and prev CRC
+  * @retval CRC
+  */
 uint8_t CRC8(uint8_t Byte, uint8_t crc)
 {
    uint8_t i;
@@ -815,6 +1006,7 @@ uint8_t CRC8(uint8_t Byte, uint8_t crc)
         if (Byte & 0x80) crc |= 0x01;
         else crc &= 0xFE;
       }
+
       Byte <<= 1;
    }
    return (crc);

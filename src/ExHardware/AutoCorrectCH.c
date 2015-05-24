@@ -23,6 +23,7 @@ Comments:
 #include "Processing_and_output.h"
 #include "Analog.h"
 #include "EPM570.h"
+#include "EPM570_GPIO.h"
 #include "AutoCorrectCH.h"
 #include "Host.h"
 #include "Measurments.h"
@@ -38,6 +39,7 @@ extern uint16_t CH_sw;
 
 /* Private function prototypes -----------------------------------------------*/
 static void Correction(void);
+static void InterliveChannelCorrection(Channel_ID_TypeDef Channel);
 static int16_t Read_zCycle(void);
 static void Update_Progress(uint16_t Val);
 static void Fill_Progress(uint16_t X, uint16_t color);
@@ -93,9 +95,12 @@ void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 
 		Set_CH_TypeINFO(Channel);
 		tmp_Analog_Div = pINFO->AD_Type.Analog.Div;
-		Correction();
-		pINFO->AD_Type.Analog.Div = tmp_Analog_Div;
 
+		Correction();
+
+		InterliveChannelCorrection(Channel);
+
+		pINFO->AD_Type.Analog.Div = tmp_Analog_Div;
 		Change_AnalogDivider(Channel, tmp_Analog_Div);
 		Set_AutoDivider_State(Channel, tAutoDivState);
 
@@ -143,6 +148,8 @@ void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 
 	Correction();
 	
+	InterliveChannelCorrection(Channel);
+
 	pINFO->AD_Type.Analog.Div = tmp_Analog_Div;
 	Change_AnalogDivider(Channel, pINFO->AD_Type.Analog.Div);
 	
@@ -206,7 +213,10 @@ void Correction(void)
 			LCD_PutStrig(rightLimit - 90, AutoCorrection_Upper_Y - 52, 0, text);
 			LCD_PutStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, "WAIT...");
 		}
-		else Change_AnalogDivider(pINFO->Mode.ID, Div);
+		else
+		{
+			Change_AnalogDivider(pINFO->Mode.ID, Div);
+		}
 
 		for(_cnt = 2; _cnt < 490; _cnt++)
 		{  
@@ -275,6 +285,54 @@ void Correction(void)
 	}
 
 	INFO_A.Mode.EN = RUN; INFO_B.Mode.EN = RUN;
+}
+
+
+
+void InterliveChannelCorrection(Channel_ID_TypeDef Channel)
+{
+	uint8_t i;
+	long data_a = 0, data_b = 0;
+
+	if(Channel == CHANNEL_A)
+	{
+		Inerlive_Cmd(ENABLE);
+
+		for(InterliveCorrectionCoeff = -126; InterliveCorrectionCoeff < 126; InterliveCorrectionCoeff++)
+		{
+			EPM570_SRAM_Write();
+			delay_ms(1);
+
+			/* Prepare SRAM to read */
+			EPM570_SRAM_ReadDirection(SRAM_READ_DOWN);
+
+			/* Enable read state for capture data */
+			EPM570_SRAM_ReadState(ENABLE);
+
+			for(i = 0; i < 100; i++)
+			{
+				EPM570_GPIO_RS(SET);
+				data_a += ~(GPIOB->IDR >> 8);
+
+				EPM570_GPIO_RS(RESET);
+				data_b += (~(GPIOB->IDR >> 8) - InterliveCorrectionCoeff);
+			}
+
+			EPM570_SRAM_ReadState(DISABLE);
+
+			/* Roll Back */
+			EPM570_SRAM_Shift(0x7fffffff, SRAM_READ_UP);
+
+			data_a /= 100;
+			data_b /= 100;
+			if(data_a == data_b)
+			{
+				break;
+			}
+		}
+
+		Inerlive_Cmd(DISABLE);
+	}
 }
 
 
@@ -359,14 +417,14 @@ int16_t Read_zCycle(void)
 	
 	/* если канал В, то выключим канал А */
 	if(pINFO == &INFO_B) INFO_A.Mode.EN = STOP;
-	pnt_gOSC_MODE->State = RUN;			 			// Установим флаг состояния осциллографа
+	gOSC_MODE.State = RUN;			 			// Установим флаг состояния осциллографа
 	pINFO->Procesing(pINFO->Mode);					// запустим цикл записи в SRAM и получаем данные по нужному каналу
 	INFO_A.Mode.EN = RUN;							// восстанавливаем состояние канала А
 	
 	/* усредняем 256 значений */
 	for(_cnt = 0; _cnt < 255; _cnt++) sum += pINFO->DATA[_cnt];
 
-	return (int16_t)(sum/256);		// возвращаем усредненное значение
+	return (int16_t)(sum/255);		// возвращаем усредненное значение
 }
 
 

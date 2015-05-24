@@ -101,7 +101,7 @@ extern const FONT_INFO  lucidaConsole_9pt_Bold_FontInfo;
 /* Exported variables --------------------------------------------------------*/
 /** указатель, тип данных btnINFO **/
 extern btnINFO *btn;
-extern btnINFO *saved_btn;
+//extern btnINFO *saved_btn;
 
 
 /* Exported function --------------------------------------------------------*/

@@ -14,6 +14,7 @@
 #include "User_Interface.h"
 #include "Measurments.h"
 #include "Processing_and_output.h"
+#include "Sweep.h"
 #include "Settings.h"
 #include "Analog.h"
 
@@ -37,11 +38,6 @@ typedef struct
 
 
 /* Private variables ---------------------------------------------------------*/
-//const MeasMode_TypeDef mMode_1 = { All_Measurments_Menu_1, 0 };
-//const MeasMode_TypeDef mMode_2 = { All_Measurments_Menu_2, 1 };
-//const MeasMode_TypeDef mMode_3 = { All_Measurments_Menu_3, 2 };
-//const MeasMode_TypeDef *MeasurmentsMode[3] = { &mMode_1, &mMode_2, &mMode_3 };
-
 const MeasMode_TypeDef MeasurmentsMode[3] = {
 		{ All_Measurments_Menu_1, 0 },	{ All_Measurments_Menu_2, 1 },	{ All_Measurments_Menu_3, 2 }
 };
@@ -121,14 +117,12 @@ void Calc_Show_Freq(void)
 	float Freq_A = 0, Freq_B = 0;
 	static char str_A[10] = {0}, str_B[10] = {0};
 	char *str;
-	uint8_t Xsw = 53;
+	const uint8_t Xsw = 55;
 	uint8_t Ysw;
 
 	if(ActiveMode != &IntMIN_MAX)
 	{
-//		if(gShowFFTFreq_Init != TRUE) FrequencyMeas_SetState(TRUE);
-
-		LCD_SetTextColor(LightBlack2);	// установить цвет текста
+		LCD_SetTextColor(StillBlue);
 
 		if(pINFO == &INFO_A)
 		{
@@ -157,7 +151,7 @@ void Calc_Show_Freq(void)
 			}
 		}
 
-		LCD_SetTextColor(pINFO->Color);	// установить цвет текста
+		LCD_SetTextColor(pINFO->Color);
 		LCD_PutStrig(rightLimit - Xsw, upperLimit - Ysw, 1, str);
 	}
 }
@@ -335,7 +329,7 @@ static __inline void FFT_Meas(float *MeasParam)
 /* Получение частоты от номера точки в выходном буфере; [63] = Fs/4; [127] = Fs/2 */
 static __inline void F_Meas_Calc(float *Var, uint8_t harm_pt)
 {
-	*Var = harm_pt * ((50000000.0 / ((float)pnt_gOSC_MODE->oscSweep + 1)) / 128.0);
+	*Var = harm_pt * ((50000000.0 / ((float)gSamplesWin.Sweep + 1)) / 128.0);
 }
 
 /* Вычисление напряжения пик-пик */
@@ -562,7 +556,7 @@ float cnvrtToTime(float Value, char *resultString)
 { 
 	char* dim_text;
 	uint8_t InterliveCoeff = (gOSC_MODE.Interleave == TRUE)? 2 : 1;
-	float val = (Value * (pnt_gOSC_MODE->oscSweep + 1) * (PointToPoint_Time_nS / ((*SweepScale) * InterliveCoeff)));
+	float val = (Value * (gSamplesWin.Sweep + 1) * (PointToPoint_Time_nS / ((*SweepScale) * InterliveCoeff)));
 
 	if((val < -999999) || (val > 999999)){ val = val / 1000000;	dim_text = "mS "; }
 	else if((val < -9999) || (val > 9999)){	val = val / 1000; dim_text = "uS "; }

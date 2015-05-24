@@ -72,7 +72,7 @@ btnINFO btnHeight_Level_W =	{
 };
 
 /* кнопка выбора фронт/спад ------------------------------------------------- */
-btnINFO btnTrigg_Mode_sync =
+btnINFO btnTrigg_Type_sync =
 {
 	LeftLineBtn,	     			// Левая граница кнопки
 	22 + (btnHight + btnSW),		// Нижняя граница кнопки
@@ -81,8 +81,8 @@ btnINFO btnTrigg_Mode_sync =
 	btn_ForeColor,	  				// Цвет фона
 	btn_activeForeColor,	 		// Цвет фона когда кнопка активна
 	btn_FontColor,		     		// Цвет шрифта когда кнопка активна
-	"Rise", 	  	     			// Текст
-	Change_Trigg_ModeSync 
+	"RISE", 	  	     			// Текст
+	Trigg_SyncType
 };
 
 /* кнопка выбора канала для синхронизации -------------------------------------- */
@@ -95,8 +95,8 @@ btnINFO btnSync_Sourse =
 	btn_ForeColor,					// Цвет фона
 	btn_activeForeColor,			// Цвет фона когда кнопка активна
 	btn_FontColor,					// Цвет шрифта когда кнопка активна
-	"Sync A",						// Текст
-	Change_SyncSourse 
+	(char*)&Trigg_Sourse_Sync_Text[0][0],	// Текст
+	Trigg_SyncSourse
 };
 
 

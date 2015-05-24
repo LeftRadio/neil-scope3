@@ -17,25 +17,28 @@ Comments    :
 #include "colors 5-6-5.h"
 
 /* Exported typedef -----------------------------------------------------------*/
+typedef enum { M_SKIP = (uint8_t)0, M_CLEAR = (uint8_t)1, M_NTH = (uint8_t)2 } Menu_MaxIndexState_Typedef;
 typedef struct
 {
 	uint16_t Coord[4];
 	const FunctionalState Clip;
 	const uint8_t ClipObjIndx;
-	const uint8_t StartButton;
+	uint8_t StartButton;
 	const uint8_t MaxButton;
 	uint8_t Indx;
+	Menu_MaxIndexState_Typedef MaxIndexState;
 	uint8_t ChangeIndButton_UP;
 	uint8_t ChangeIndButton_DOWN;
 	btnINFO *Buttons[16];
 	void (*MenuCallBack)(DrawState NewDrawState);
+
 } Menu_Struct_TypeDef;
 
 typedef struct
 {
 	uint16_t Coord[4];
 	char *Text;
-	const uint16_t Color;
+	uint16_t Color;
 	uint8_t TimeShow;
 	uint32_t TimeOFF;
 	Boolean Visible;
@@ -48,12 +51,13 @@ typedef enum {SAVE = (uint8_t)0, RESTORE = (uint8_t)1} SavedState_TypeDef;
 #define NO_activeButton		0
 #define activeButton		1
 
-#define btn_ForeColor				DarkAuqa //Auqa			// Цвет фона кнопки
+#define btn_ForeColor				DarkAuqa
 #define btn_CH_A_ForeColor			DarkOrange2
 #define btn_CH_B_ForeColor			DarkAuqa
-#define btn_activeForeColor			DarkOrange			// Цвет фона когда кнопка активна
-#define btn_FontColor				White				// Цвет шрифта когда кнопка активна
+#define btn_activeForeColor			DarkOrange
+#define btn_FontColor				White
 
+/* ID for clip objects */
 #define ColorMN_ClipObj			1
 #define trgMenu_ClipObj			2
 #define trgINFO_ClipObj			3
@@ -69,7 +73,7 @@ typedef enum {SAVE = (uint8_t)0, RESTORE = (uint8_t)1} SavedState_TypeDef;
 #define MenuMax					7
 
 /* Exported variables --------------------------------------------------------*/
-extern Menu_Struct_TypeDef gInterfaceMenu, QuickMenu, ChannelA_Menu, ChannelB_Menu, DigitTrigMenu, TrigMenu, MeasMenu; //, TimeScaleMenu;
+extern Menu_Struct_TypeDef gInterfaceMenu, QuickMenu, ChannelA_Menu, ChannelB_Menu, DigitTrigMenu, TrigMenu, MeasMenu;
 extern Menu_Struct_TypeDef *pAll_Menu[7];
 extern Menu_Struct_TypeDef *pMenu;
 
@@ -80,6 +84,15 @@ extern uint8_t indxColorA, indxColorB;
 extern uint8_t indxTextColorA, indxTextColorB;
 extern uint8_t indxColorButtons;
 extern uint8_t indxColorGrid;
+
+extern uint16_t leftLimit, rightLimit, upperLimit, lowerLimit;
+extern uint16_t centerX, centerY;
+
+extern uint16_t globalBackColor;
+extern uint16_t Active_BackColor;
+extern uint16_t Active_BorderColor;
+
+extern const char sweepMODE_text[4][10];
 
 /* Exported function --------------------------------------------------------*/
 void Draw_Logo(void);
@@ -114,6 +127,8 @@ void Change_COLOR_Mn_Position(uint16_t Position, uint16_t *OutColor);
 void FrequencyMeas_Draw(Boolean NewStatus);
 void FrequencyMeas_SaveRestore_State(uint8_t Save, Boolean *SaveRestoreStatus);
 
+void BackLightPowerState_UpdateButton(void);
+
 void Beep_Start(void);
 void Beep_Stop(void);
 
@@ -122,8 +137,7 @@ void ConvertToString(uint32_t Num, char* Str, uint8_t NumSymbol);
 void mSet_AllButtons_Color(uint16_t NewColor);
 void mSet_Button_Color(Menu_Struct_TypeDef *btnMenu, uint16_t NewColor);
 
-void setActiveButton(btnINFO *Btn);	   /* Функция выбора активной кнопки меню */
-void saveActiveButton(btnINFO *Btn);	   /* Функция сохранения активной кнопки меню */
+void setActiveButton(btnINFO *Btn);
 
 void Draw_Menu(Menu_Struct_TypeDef *Menu);
 void ReDraw_Menu(Menu_Struct_TypeDef *ReDrawMenu, btnINFO *Button);
@@ -131,8 +145,13 @@ void Clear_Menu(Menu_Struct_TypeDef *Menu);
 void Change_Menu_Indx(void);
 void SetActiveMenu(Menu_Struct_TypeDef *NewActiveMenu);
 
+void UI_BackLightPowerState_UpdateButton(void);
+void UI_LoadPreferenceUpdate(void);
+
 /* Смена активной области вывода по горизонтали ---------------------------------*/
 void Change_horizontal_size(uint16_t NEW_rightLimit);
+
+
 
 
 #endif /* __USER_INTERFACE_H */

@@ -17,28 +17,16 @@
 #include "Quick_Menu.h"
 #include "gInterface_MENU.h"
 #include "EPM570.h"
+#include "Synchronization.h"
 #include "Processing_and_output.h"
 #include "Analog.h"
 #include "Measurments.h"
+#include "Quick_Menu_buttons.c"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
-void Change_Color_Buttons(void);
-void Change_Color_Grid(void);
-void Change_Color_Back(void);
-void BackLight(void);
-void Save_pref(void);
-void Beep_ON_OFF(void);
-void Perform_Erase_EEPROM(void);
-void ShowFFT_Freq(void);
-void Change_Interpolation(void);
-void Auto_Power_OFF(void);
-
-#include "Quick_Menu_buttons.c"
-
-
 /* Private variables ---------------------------------------------------------*/
 Menu_Struct_TypeDef QuickMenu = {
 		{ 11, 19, LeftLineBtn + btnWidth, UpLineBtn + 1},
@@ -47,13 +35,14 @@ Menu_Struct_TypeDef QuickMenu = {
 		qMnuButtonsMAX,
 		qMnuButtonsMAX,
 		qMnuButtonsMAX,
+		M_CLEAR,
 		DOWN,
 		UP,
 		{
 			&Color_Buttons, &Color_Grid, &EraseEeprom, &Save,
 			&AutoPowerOFF, &BeepEN,	&btnLIGHT_INFO, &btnShowFFT, &Interpolation
 		},
-		(void*)0
+		(void*)0,
 };
 
 
@@ -65,13 +54,11 @@ extern btnINFO btnSWEEP_MODE;
 
 /* Functions -----------------------------------------------------------------*/
 
-/*******************************************************************************
-* Function Name  : Change_Color_Buttons
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Change_Color_Buttons
+  * @param  None
+  * @retval None
+  */
 void Change_Color_Buttons(void)
 {
 	int8_t i = 0;
@@ -105,13 +92,11 @@ void Change_Color_Buttons(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : Change_Color_Buttons
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Change_Color_Grid
+  * @param  None
+  * @retval None
+  */
 void Change_Color_Grid(void)
 {
 	int8_t i = 0;
@@ -135,54 +120,55 @@ void Change_Color_Grid(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : Perform_Erase_EEPROM
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Perform_Erase_EEPROM
+  * @param  None
+  * @retval None
+  */
 void Perform_Erase_EEPROM(void)
 {
-	uint8_t ErasedData[100];
-	message = "SUCCESSFUL Erased";
-
 	if(ButtonsCode != OK) return;
 
-	memset(ErasedData, 0, 150);
-	err_I2C_flag = 0;
-	EEPROM_Write(ErasedData, 0, 150);
+	if(ErasePreference() != 0) message = "Error erase!";
+	else message = "Successful erased, reboot...";
 
-	if(err_I2C_flag != 0) message = "ERROR when Erased";
-
-	/* Show message for 3 seconds */
 	Show_Message(message);
 
+	/* delay before reboot */
 	delay_ms(2000);
-	GPIOC->BRR = GPIO_Pin_15;
+	NVIC_SystemReset();
+//	GPIOC->BRR = GPIO_Pin_15;
 }
 
 
-/*******************************************************************************
-* Function Name  : Save_pref
-* Description    : Функция сохранения смещения, коррекции нуля, режима интерполяции
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Save_pref
+  * @param  None
+  * @retval None
+  */
 void Save_pref(void)
 {
-	if(ButtonsCode == OK) SavePreference();
+	if(ButtonsCode == OK)
+	{
+		if(SavePreference() != 0)
+		{
+			LCD_SetTextColor(0xF800);
+			Show_Message("Preference save error!");
+		}
+		else
+		{
+			LCD_SetTextColor(LightGray2);
+			Show_Message("Preference save successful");
+		}
+	}
 }
 
 
-/*******************************************************************************
-* Function Name  : Auto_Power_OFF
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Auto_Power_OFF
+  * @param  None
+  * @retval None
+  */
 void Auto_Power_OFF(void)
 {
 	char tstr[30] = {"Auto Power OFF"};
@@ -190,14 +176,14 @@ void Auto_Power_OFF(void)
 
 	if(ButtonsCode == LEFT)
 	{
-		if(pnt_gOSC_MODE->OFF_Struct.State == ENABLE)
+		if(AutoOff_Timer.State == ENABLE)
 		{
-			pnt_gOSC_MODE->OFF_Struct.Work_Minutes -= 10;
+			AutoOff_Timer.Work_Minutes -= 10;
 
-			if(pnt_gOSC_MODE->OFF_Struct.Work_Minutes <= 0)
+			if(AutoOff_Timer.Work_Minutes <= 0)
 			{
-				pnt_gOSC_MODE->OFF_Struct.State = DISABLE;
-				pnt_gOSC_MODE->OFF_Struct.Work_Minutes = 0;
+				AutoOff_Timer.State = DISABLE;
+				AutoOff_Timer.Work_Minutes = 0;
 
 				memcpy(&tstr[14], " DISABLE", 8);
 				result[0] = '-';
@@ -205,7 +191,7 @@ void Auto_Power_OFF(void)
 			else
 			{
 				memcpy(&tstr[14], " ENABLE    min", 14);
-				sprintf (result, "%d", pnt_gOSC_MODE->OFF_Struct.Work_Minutes);
+				sprintf (result, "%d", AutoOff_Timer.Work_Minutes);
 				memcpy(&tstr[22], result, 2);
 			}
 		}
@@ -213,12 +199,12 @@ void Auto_Power_OFF(void)
 	}
 	else if(ButtonsCode == RIGHT)
 	{
-		pnt_gOSC_MODE->OFF_Struct.State = ENABLE;
-		pnt_gOSC_MODE->OFF_Struct.Work_Minutes += 10;
-		if(pnt_gOSC_MODE->OFF_Struct.Work_Minutes > 90) pnt_gOSC_MODE->OFF_Struct.Work_Minutes = 90;
+		AutoOff_Timer.State = ENABLE;
+		AutoOff_Timer.Work_Minutes += 10;
+		if(AutoOff_Timer.Work_Minutes > 90) AutoOff_Timer.Work_Minutes = 90;
 
 		memcpy(&tstr[14], " ENABLE    min", 14);
-		sprintf (result, "%d", pnt_gOSC_MODE->OFF_Struct.Work_Minutes);
+		sprintf (result, "%d", AutoOff_Timer.Work_Minutes);
 		memcpy(&tstr[22], result, 2);
 	}
 	else return;
@@ -231,17 +217,15 @@ void Auto_Power_OFF(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : Save_pref
-* Description    : Функция сохранения смещения, коррекции нуля, режима интерполяции
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Beep_ON_OFF
+  * @param  None
+  * @retval None
+  */
 void Beep_ON_OFF(void)
 {
-	if(ButtonsCode == RIGHT){ BeepState = ENABLE; btn->Text = "Beep ON"; }
-	else if(ButtonsCode == LEFT){ BeepState = DISABLE; btn->Text = "Beep OFF"; }
+	if(ButtonsCode == RIGHT){ gOSC_MODE.BeepState = ENABLE; btn->Text = "Beep ON"; }
+	else if(ButtonsCode == LEFT){ gOSC_MODE.BeepState = DISABLE; btn->Text = "Beep OFF"; }
 	else return;
 
 	/* Show message for 3 seconds */
@@ -249,35 +233,52 @@ void Beep_ON_OFF(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : BackLight
-* Description    : Изменение яркости подсведки
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  BackLight
+  * @param  None
+  * @retval None
+  */
 void BackLight(void)
 {
-   static uint8_t bckLight_Val = 1;
+	if((ButtonsCode != RIGHT) && (ButtonsCode != LEFT)) return;
 
-   if((ButtonsCode == RIGHT) && (bckLight_Val != 1)){ bckLight_Val = 1; btn->Text = "B.L. MAX"; }
-   else if((ButtonsCode == LEFT) && (bckLight_Val != 0)){ bckLight_Val = 0; btn->Text = "B.L. MIN"; }
-   else return;
+	if(gOSC_MODE.PowerSave == PWR_S_ENABLE)
+	{
+		if(gOSC_MODE.BackLight == BCKL_MIN)
+		{
+			if(ButtonsCode == RIGHT) gOSC_MODE.BackLight = BCKL_MAX;
+			else return;
+		}
+		else if(gOSC_MODE.BackLight == BCKL_MAX)
+		{
+			if(ButtonsCode == RIGHT) gOSC_MODE.PowerSave = PWR_S_DISABLE;
+			gOSC_MODE.BackLight = BCKL_MIN;
+		}
+	}
+	else
+	{
+		if(gOSC_MODE.BackLight == BCKL_MIN)
+		{
+			if(ButtonsCode == LEFT) gOSC_MODE.PowerSave = PWR_S_ENABLE;
+			gOSC_MODE.BackLight = BCKL_MAX;
+		}
+		else if(gOSC_MODE.BackLight == BCKL_MAX)
+		{
+			if(ButtonsCode == LEFT) gOSC_MODE.BackLight = BCKL_MIN;
+			else return;
+		}
+	}
 
-   //LCD_DrawButton(btn, activeButton);
-   EPM570_ChangeBackLight(bckLight_Val);
-
-   Show_Message(btn->Text);
+	EPM570_Set_BackLight(gOSC_MODE.BackLight);
+	UI_BackLightPowerState_UpdateButton();
 }
 
 
-/*******************************************************************************
-* Function Name  : ShowFFT_Freq
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  ShowFFT_Freq
+  * @param  None
+  * @retval None
+  */
 void ShowFFT_Freq(void)
 {
 	Boolean tmp;
@@ -287,7 +288,7 @@ void ShowFFT_Freq(void)
 	else if(ButtonsCode == LEFT) tmp = FALSE;
 	else return;
 
-	if((pnt_gOSC_MODE->autoMeasurments == ON) || (ActiveMode == &FFT_MODE))
+	if((gOSC_MODE.autoMeasurments == ON) || (ActiveMode == &FFT_MODE))
 	{
 		MessageText = "FFT display disabled in this Mode";
 	}
@@ -307,13 +308,11 @@ void ShowFFT_Freq(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : Change_Interpolation
-* Description    : Функция смены вида интерполяции
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Change_Interpolation
+  * @param  None
+  * @retval None
+  */
 void Change_Interpolation(void)
 {
 	uint8_t NewMODE = ActiveMode->Indx;
@@ -325,15 +324,15 @@ void Change_Interpolation(void)
 	{
 		if(ActiveMode == &IntLIN)
 		{
-//			if(((SwipScale > 1) || (pnt_gOSC_MODE->oscSweep < 1)))
+//			if(((SwipScale > 1) || (gSamplesWin.Sweep < 1)))
 //			{
 //				if((SwipScale != &SweepScaleCoff[0]) && (SwipScale != &SweepScaleCoff[1]))
 //				{
 //					Show_Message("Disable for this time/div");
 //					return;
 //				}
-//				else if(pnt_gOSC_MODE->oscSweep < 1) NewMODE++;
-			if(pnt_gOSC_MODE->oscSweep < 1) NewMODE++;
+//				else if(gSamplesWin.Sweep < 1) NewMODE++;
+			if(gSamplesWin.Sweep < 1) NewMODE++;
 //			}
 
 			/* Save show fft freq status */
@@ -343,7 +342,7 @@ void Change_Interpolation(void)
 	}
 	else if((ButtonsCode == LEFT) && (ActiveMode != &IntNONE))
 	{
-		if((pnt_gOSC_MODE->oscSweep < 1)  && (ActiveMode != &IntLIN)) NewMODE--;
+		if((gSamplesWin.Sweep < 1)  && (ActiveMode != &IntLIN)) NewMODE--;
 		sign = -1;
 	}
 	else return;
@@ -357,12 +356,12 @@ void Change_Interpolation(void)
 	btn->Text = (char*)ActiveMode->Text;
 
 	/* обновляем регистры ПЛИС в зависимости от oscNumPoints_Ratio */
-	Set_numPoints(pnt_gOSC_MODE->oscNumPoints);
+	EPM570_Set_numPoints(gOSC_MODE.oscNumPoints);
 
 	if(OldMode == 3)
 	{
 		Save_ReDraw_Auto_Meas(RESTORE);
-		if(pnt_gOSC_MODE->autoMeasurments == OFF)
+		if(gOSC_MODE.autoMeasurments == OFF)
 		{
 			Clear_Menu(&MeasMenu);
 			LCD_DrawGrid(&activeAreaGrid, DRAW); // перерисовываем сетку в области осциллограмм
@@ -378,15 +377,14 @@ void Change_Interpolation(void)
 	{
 		if(gShowFFTFreq == TRUE) FrequencyMeas_Draw(FALSE);
 
-		if(pnt_gOSC_MODE->oscSync != Sync_NONE)
+		if(gSyncState.Mode != Sync_NONE)
 		{
-			pnt_gOSC_MODE->oscSync = Sync_NONE;
-			Sweep_Mode(FALSE);
+			Sweep_Mode(Sync_NONE, FALSE);
 			LCD_DrawButton(&btnSWEEP_MODE, NO_activeButton);
 		}
 
 		Save_ReDraw_Auto_Meas(SAVE);
-		pnt_gOSC_MODE->autoMeasurments = ON;
+		gOSC_MODE.autoMeasurments = ON;
 		mModeActive = (MeasMode_TypeDef*)&MeasurmentsMode[2];
 		Draw_Menu(&MeasMenu);
 	}
@@ -402,3 +400,7 @@ void Change_Interpolation(void)
 }
 
 
+
+/*********************************************************************************************************
+      END FILE
+*********************************************************************************************************/

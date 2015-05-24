@@ -29,14 +29,10 @@ typedef struct
 extern uint16_t X0_Restrict, X1_Restrict, Y_Restrict;
 extern uint8_t Shift;
 
-extern uint8_t SweepIndex, ScaleIndex;
-extern uint8_t *SweepScale;
-extern const uint8_t SweepScaleCoff[4];
-extern const uint8_t IntrlSweepScaleCoff[4];
-
 extern InterpolationMode_TypeDef *ActiveMode;
 extern InterpolationMode_TypeDef IntNONE, IntLIN, IntMIN_MAX, FFT_MODE;
 extern const InterpolationMode_TypeDef *InterpModes[4];
+extern volatile uint8_t Interpolate_AciveMode_Index;
 
 /* Exported function --------------------------------------------------------*/
 void Update_Oscillogram(void);
@@ -51,6 +47,7 @@ void Clear_OLD_Line(uint16_t X0pos, uint16_t Y0pos, uint16_t X1pos, uint16_t Y1p
 void Set_Oscillogram_Restrictions(uint16_t X_Left, uint16_t X_Right, uint16_t Y_Up);
 void Set_CH_TypeINFO(Channel_ID_TypeDef NewChannelType);
 
+void Inerlive_Cmd(FunctionalState NewState);
 
 
 #endif /* __PROCESSING_AND_OUT_H */

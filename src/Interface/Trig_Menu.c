@@ -15,10 +15,10 @@ Comments    :
 #include "User_Interface.h"
 #include "Trig_Menu.h"
 #include "EPM570.h"
+#include "EPM570_Registers.h"
+#include "Synchronization.h"
 #include "Processing_and_output.h"
 #include "Measurments.h"
-#include "Trig_Menu_buttons.c"
-
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -28,16 +28,24 @@ const char Trigg_Sourse_Sync_Text[3][10] = { "Sync A", "Sync B", "Digital" };
 
 /* init varible of trigger info */
 TriggShowInfo_TypeDef  TriggShowInfo = {
-	//398,
-	{ "Rise", "Fall", "IN Win", "OUT Win" },
+	{
+			"RISE", "FALL", "IN WIN", "OUT WIN",
+			"COND", "DIFF", "C & D", "C | D"
+	},
+
+	15,
+	206,
+	"",
 	DISABLE
 };
 
-TrigCursorINFO *pntTrigCursor;
 TrigCursorINFO Height_Y_cursor = { 120, 0, LightGray3, "1", TRUE };		// "верхний" курсор триггера по Y
 TrigCursorINFO Low_Y_cursor    = { 120, 0, LightGray3, "2", TRUE };		// "нижний" курсор триггера по Y
 TrigCursorINFO trigPosX_cursor = { 205, 0, LightRed2, "T", TRUE };		//  курсор триггера по X
+TrigCursorINFO *pntTrigCursor = &Height_Y_cursor;
 
+/* buttons vars */
+#include "Trig_Menu_buttons.c"
 
 /* Private function prototypes -----------------------------------------------*/
 static void TrigMenuCallBack(DrawState NewDrawState);
@@ -51,14 +59,16 @@ Menu_Struct_TypeDef TrigMenu = {
 		TrigButtonsMAX,
 		TrigButtonsMAX,
 		TrigButtonsMAX,
+		M_CLEAR,
 		DOWN,
 		UP,
 		{
 			&btnTrigg_ShowInfo,	&btnTrigg_Position_X, &btnLow_Level_W,
-			&btnHeight_Level_W, &btnTrigg_Mode_sync, &btnSync_Sourse
+			&btnHeight_Level_W, &btnTrigg_Type_sync, &btnSync_Sourse
 		},
-		TrigMenuCallBack
+		TrigMenuCallBack,
 };
+
 
 
 /* Functions -----------------------------------------------------------------*/
@@ -119,9 +129,8 @@ void Trigg_Position_X(void)
 	btnTIME_SCALE_trigX_Update(CLEAR);
 	DrawTrig_PosX(CLEAR, &trigPosX_cursor);
 
-	if(pnt_gOSC_MODE->oscSync != Sync_NONE)
+	if(gSyncState.Mode != Sync_NONE)
 	{
-
 		if(ButtonsCode == RIGHT)				// else if sync is ON and push RIGHT
 		{
 			if(speed_up_cnt++ >= 10) sign = 5;
@@ -133,15 +142,16 @@ void Trigg_Position_X(void)
 			else sign = -1;
 		}
 
-		trigPosX_cursor.WindowPosition = pnt_gOSC_MODE->WindowPosition;
+		trigPosX_cursor.WindowPosition = gSamplesWin.WindowPosition;
 		trigPosX_cursor.Position = trigPosX_cursor.Position + sign;	// изменяем позицию курсорa
 
 		btnTIME_SCALE_trigX_Update(DRAW);
 		DrawTrig_PosX(DRAW, &trigPosX_cursor);
-
-		Set_numPoints(pnt_gOSC_MODE->oscNumPoints);	   /* обновляем количество точек */
 		Update_triggInfo_OnScreen(ReDRAW);		/* обновляем инфо триггера */
 	}
+
+	/* Set new position for trig X, update numPoints*/
+	gSyncState.foops->SetTrigg_X(trigPosX_cursor.Position - leftLimit);
 }
 
 
@@ -153,7 +163,7 @@ void Trigg_Position_X(void)
 *******************************************************************************/
 void Change_H_CursorLevel(void)
 {
-	if(pnt_gOSC_MODE->oscSync != Sync_NONE)
+	if((gSyncState.Mode != Sync_NONE) && (gSyncState.Sourse != CHANNEL_DIGIT))
 	{
 		setActiveButton(&btnHeight_Level_W);
 		Change_Sync_CursorLevel(&Height_Y_cursor);
@@ -170,16 +180,15 @@ void Change_H_CursorLevel(void)
 *******************************************************************************/
 void Change_L_CursorLevel(void)
 {
-	btn->Active_Color = Gray;
-
-	if(pnt_gOSC_MODE->oscSync != Sync_NONE)
+	if((gSyncState.Mode != Sync_NONE) && (gSyncState.Sourse != CHANNEL_DIGIT))
 	{
-		if((pnt_gOSC_MODE->AnalogSyncType == Sync_IN_WIN) || (pnt_gOSC_MODE->AnalogSyncType == Sync_OUT_WIN))
+		if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
 		{
 			btn->Active_Color = Orange;
 			Change_Sync_CursorLevel(&Low_Y_cursor);
 		}
 	}
+	else btn->Active_Color = Gray;
 }
 
 
@@ -211,21 +220,24 @@ void Change_Sync_CursorLevel(TrigCursorINFO *Cursor)
 *******************************************************************************/
 void Sync_ChangeLevel(TrigCursorINFO *Cursor, int16_t Diff)
 {
+	/* Select new cursor and clear old */
 	SetActiveTrigCursor(Cursor);
-	Draw_Cursor_Trig(CLEAR, globalBackColor, globalBackColor); // очищаем старый курсор
+	Draw_Cursor_Trig(CLEAR, globalBackColor, globalBackColor);
 
+	/* Change cursor position */
 	Cursor->Position += Diff;
 
-	/* проверяем позицию курсора на выход за область экрана */
+	/* Clip cursor position */
 	if((Cursor->Position < lowerLimit + 10)) Cursor->Position = lowerLimit + 10;
 	else if(Cursor->Position > upperLimit - 10) Cursor->Position = upperLimit - 10;
 
-	/* обновляем курсоры уровня триггера */
+	/* Update trigger and channels cursors, trigger info on LCD */
 	Draw_Cursor_Trig(DRAW, globalBackColor, Red);
+	Draw_CH_Cursors();
+	Update_triggInfo_OnScreen(ReDRAW);
 
-	Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);			/* обновляем регистр ПЛИС - Trigger_level_A  */
-	Draw_CH_Cursors();									/* обновляем указатели каналов */
-	Update_triggInfo_OnScreen(ReDRAW);					/* обновляем инфо триггера */
+	/* Update sync mode */
+	gSyncState.foops->StateUpdate();
 }
 
 
@@ -235,28 +247,36 @@ void Sync_ChangeLevel(TrigCursorINFO *Cursor, int16_t Diff)
 * Input          : None
 * Return         : None
 *******************************************************************************/
-void Change_Trigg_ModeSync(void)
+void Trigg_SyncType(void)
 {
-   if((ButtonsCode == RIGHT) && (pnt_gOSC_MODE->AnalogSyncType < oscSyncMode_MAX)) pnt_gOSC_MODE->AnalogSyncType++;
-   else if((ButtonsCode == LEFT) && (pnt_gOSC_MODE->AnalogSyncType > 0)) pnt_gOSC_MODE->AnalogSyncType--;
-   else return;
-      
-   btn->Text = TriggShowInfo.triggType_Name[pnt_gOSC_MODE->AnalogSyncType];
-   
-   /* Очищаем линии указателей триггера */
-//   Draw_Cursor_Trig(CLEAR, LightGray4, Red);
-   Draw_Cursor_Trig(CLEAR, globalBackColor, globalBackColor);
+	/* Select new sync type */
+	if((ButtonsCode == RIGHT) && (gSyncState.Type < Sync_LA_State_OR_Different)) gSyncState.Type++;
+	else if((ButtonsCode == LEFT) && (gSyncState.Type > 0)) gSyncState.Type--;
+	else return;
 
-   if(pnt_gOSC_MODE->AnalogSyncType > 1)
-   {
-	   Low_Y_cursor.Position = Height_Y_cursor.Position - 30;
-	   if(Low_Y_cursor.Position < (lowerLimit + 5)) Low_Y_cursor.Position = lowerLimit + 5;
-	   pntTrigCursor = &Height_Y_cursor;
-   }
+	/* Update text and cursors */
+	btn->Text = TriggShowInfo.triggType_Name[gSyncState.Type];
 
-   Draw_Cursor_Trig(DRAW, LightGray4, Red);
-   Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);							/* обновляем регистры синхронизации ПЛИС */
-   Update_triggInfo_OnScreen(ReDRAW);		/* обновляем инфо триггера */
+	if(gSyncState.Type <= Sync_OUT_WIN)
+	{
+		Draw_Cursor_Trig(CLEAR, globalBackColor, globalBackColor);
+
+		if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
+		{
+			Low_Y_cursor.Position = Height_Y_cursor.Position - 30;
+			if(Low_Y_cursor.Position < (lowerLimit + 5)) Low_Y_cursor.Position = lowerLimit + 5;
+			pntTrigCursor = &Height_Y_cursor;
+		}
+
+		/* Update trigger cursor */
+		Draw_Cursor_Trig(DRAW, LightGray4, Red);
+	}
+
+	/* Update trigger info */
+	Update_triggInfo_OnScreen(ReDRAW);
+
+	/* Update EPM570 sync registers */
+	gSyncState.foops->StateUpdate();
 }
 
 
@@ -266,53 +286,57 @@ void Change_Trigg_ModeSync(void)
 * Input          : None
 * Return         : None
 *******************************************************************************/
-void Change_SyncSourse(void)
+void Trigg_SyncSourse(void)
 {
-	if((pnt_gOSC_MODE->SyncSourse == CHANNEL_DIGIT) && (ButtonsCode == OK))
+	if((gSyncState.Sourse == CHANNEL_DIGIT) && (ButtonsCode == OK))
 	{
 		LCD_DrawButton((btnINFO*)&btnSync_Sourse, NO_activeButton);
-		SetActiveMenu(&DigitTrigMenu);		// делаем активным меню
+		SetActiveMenu(&DigitTrigMenu);
 		Draw_Menu(&DigitTrigMenu);
 		return;
 	}
-	else if((ButtonsCode == LEFT) && (pnt_gOSC_MODE->SyncSourse > CHANNEL_A)) pnt_gOSC_MODE->SyncSourse--;
-	else if((ButtonsCode == RIGHT) && (pnt_gOSC_MODE->SyncSourse < CHANNEL_DIGIT)) pnt_gOSC_MODE->SyncSourse++;
+	else if((ButtonsCode == LEFT) && (gSyncState.Sourse > CHANNEL_A)) gSyncState.Sourse--;
+	else if((ButtonsCode == RIGHT) && (gSyncState.Sourse < CHANNEL_DIGIT)) gSyncState.Sourse++;
 	else return;
-	
-	Sync_Sourse_Texts();
-	btn->Text = (char*)&Trigg_Sourse_Sync_Text[pnt_gOSC_MODE->SyncSourse][0];
-
-	Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);	/* обновляем регистры синхронизации ПЛИС */
-	Update_triggInfo_OnScreen(ReDRAW);		/* обновляем инфо триггера */
-
-	/* обновляем кнопку вида синхронизации */
-	btnTrigg_Mode_sync.Text = TriggShowInfo.triggType_Name[pnt_gOSC_MODE->AnalogSyncType];
-	LCD_DrawButton(&btnTrigg_Mode_sync, NO_activeButton);
-}
 
 
-/*******************************************************************************
-* Function Name  : SyncSourseTexts
-* Description    :
-* Input          : None
-* Return         : None
-*******************************************************************************/
-void Sync_Sourse_Texts(void)
-{
-	if(pnt_gOSC_MODE->SyncSourse < CHANNEL_DIGIT)
+	Draw_Cursor_Trig(CLEAR, globalBackColor, globalBackColor);
+
+	if( ((gSyncState.Sourse == CHANNEL_A) || (gSyncState.Sourse == CHANNEL_B)) && (gSyncState.Mode != Sync_NONE) )
 	{
-		TriggShowInfo.triggType_Name[0] = "Rise";
-		TriggShowInfo.triggType_Name[1] = "Fall";
-		TriggShowInfo.triggType_Name[2] = "IN Win";
-		TriggShowInfo.triggType_Name[3] = "OUT Win";
+		if(gSyncState.Sourse == CHANNEL_A)
+		{
+			Height_Y_cursor.Position = INFO_A.Position;
+			Low_Y_cursor.Position = INFO_A.Position - 30;
+		}
+		else
+		{
+			Height_Y_cursor.Position = INFO_B.Position;
+			Low_Y_cursor.Position = INFO_B.Position - 30;
+		}
+
+		gSyncState.Type = Sync_Rise;
+		Draw_Cursor_Trig(DRAW, LightGray4, Red);
 	}
 	else
 	{
-		TriggShowInfo.triggType_Name[0] = "Cond";
-		TriggShowInfo.triggType_Name[1] = "Diff";
-		TriggShowInfo.triggType_Name[2] = "C or D";
-		TriggShowInfo.triggType_Name[3] = "C and D";
+		Height_Y_cursor.Visible = FALSE;
+		Low_Y_cursor.Visible = FALSE;
+
+		gSyncState.Type = Sync_LA_State;
 	}
+
+	/* Update texts, button, cursors and trigger info */
+	btnSync_Sourse.Text = (char*)&Trigg_Sourse_Sync_Text[gSyncState.Sourse][0];
+	btnTrigg_Type_sync.Text = TriggShowInfo.triggType_Name[gSyncState.Type];
+	LCD_DrawButton(&btnTrigg_Type_sync, NO_activeButton);
+	Update_triggInfo_OnScreen(ReDRAW);
+
+	/* redraw channel cursors */
+	Draw_CH_Cursors();
+
+	/* Update EPM570 sync registers */
+	gSyncState.foops->StateUpdate();
 }
 
 
@@ -326,18 +350,21 @@ void Change_Trig_X_Y_onMainMenu(void)
 {
 	if(ButtonsCode == OK)
 	{
-		if((pnt_gOSC_MODE->AnalogSyncType == Sync_IN_WIN) || (pnt_gOSC_MODE->AnalogSyncType == Sync_OUT_WIN))
+		if(gSyncState.Sourse != CHANNEL_DIGIT)
 		{
-			if(pntTrigCursor == &Height_Y_cursor)
+			if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
 			{
-				pntTrigCursor = &Low_Y_cursor;
-				Draw_Cursor_Trig(DRAW, globalBackColor, Red);				/* обновляем курсоры уровня триггера */
-				return;
+				if(pntTrigCursor == &Height_Y_cursor)
+				{
+					pntTrigCursor = &Low_Y_cursor;
+					Draw_Cursor_Trig(DRAW, globalBackColor, Red);				/* обновляем курсоры уровня триггера */
+					return;
+				}
 			}
-		}
 
-		pntTrigCursor = &Height_Y_cursor;
-		Draw_Cursor_Trig(CLEAR, LightGray4, Red);				/* обновляем курсоры уровня триггера */
+			pntTrigCursor = &Height_Y_cursor;
+			Draw_Cursor_Trig(CLEAR, LightGray4, Red);				/* обновляем курсоры уровня триггера */
+		}
 
 		LCD_SetFullScreen();
 		btn->Active_Color = Orange;
@@ -356,13 +383,15 @@ void Change_Trig_X_Y_onMainMenu(void)
 			return;
 		}
 
-		/* update trigger Y positions if push UP or DOWN */
-		SetActiveTrigCursor(pntTrigCursor);
-		Change_Sync_CursorLevel(pntTrigCursor);
-		Update_triggInfo_OnScreen(ReDRAW);		/* обновляем инфо триггера */
+		if(gSyncState.Sourse != CHANNEL_DIGIT)
+		{
+			/* update trigger Y positions if push UP or DOWN */
+			SetActiveTrigCursor(pntTrigCursor);
+			Change_Sync_CursorLevel(pntTrigCursor);
+			Update_triggInfo_OnScreen(ReDRAW);		/* обновляем инфо триггера */
+		}
 	}
 }
-
 
 
 /*******************************************************************************
@@ -374,26 +403,28 @@ void Change_Trig_X_Y_onMainMenu(void)
 *******************************************************************************/
 void Draw_Trigg_Info(FunctionalState NewState)
 {
-	uint16_t X0 = leftLimit + 1, Y0 = upperLimit - 20;
-	uint16_t X1 = (gShowFFTFreq == TRUE)? rightLimit - 61 : rightLimit - 1;
+	uint16_t X0 = leftLimit + 1;
+	uint16_t Y0 = upperLimit - 20;
+	uint16_t X1 = (gShowFFTFreq == TRUE)? rightLimit - 62 : rightLimit - 1;
 	uint16_t Y1 = upperLimit - 6;
 
 	LCD_ClearArea(X0, Y0, X1, Y1, Active_BackColor);
 
 	if(NewState == ENABLE)
 	{
-		/* устанавливаем ограничения для отрисовки */
+		/* Set new object to clip and update trigg info */
 		Set_New_ClipObject(X0, Y0, X1, Y1, IN_OBJECT, trgINFO_ClipObj);
-		Update_Oscillogram();	// обновлем осциллограммы, для того что бы они "обрезались" по размерам отсечения
 		Update_triggInfo_OnScreen(DRAW);
 	}
 	else if(NewState == DISABLE)
 	{
-		/* Clear */
-		Clear_ClipObject(trgINFO_ClipObj);		/* убираем ограничения для отрисовки */
-		LCD_DrawGrid(&activeAreaGrid, DRAW);	/* перерисовываем сетку в области осциллограмм */
-		Update_Oscillogram();				    /* обновлем осциллограммы */
+		/* Clear, update grid */
+		Clear_ClipObject(trgINFO_ClipObj);
+		LCD_DrawGrid(&activeAreaGrid, DRAW);
 	}
+
+	/* Update oscillograms */
+	Update_Oscillogram();
 }
 
 
@@ -405,89 +436,81 @@ void Draw_Trigg_Info(FunctionalState NewState)
 *******************************************************************************/
 void Update_triggInfo_OnScreen(DrawState NewDrawState)
 {
-	uint16_t X0 = leftLimit + 5, Y0 = upperLimit - 20;
-	static char tmpText[60];
 	uint8_t sLen;
 	float tmp;
 
-	if(TriggShowInfo.Status != ENABLE) return;
-
-	if(NewDrawState == ReDRAW)
+	if(TriggShowInfo.Status == ENABLE)
 	{
-		/* Clear Print values string */
-		LCD_SetTextColor(Active_BackColor);
-		//LCD_SetFont(&timesNewRoman12ptFontInfo);    // установить шрифт
-		LCD_PutStrig(X0, Y0, 0, tmpText);
-	}
 
-	/* if sync is a analog */
-	if(pnt_gOSC_MODE->SyncSourse != CHANNEL_DIGIT)
-	{
-		/* change pINFO for needed channel */
-		if(pnt_gOSC_MODE->SyncSourse == CHANNEL_B)	pINFO = &INFO_B;
-		else if(pnt_gOSC_MODE->SyncSourse == CHANNEL_A) pINFO = &INFO_A;
-
-		/* prepare H_Level value text to print */
-		strcpy(&tmpText[0], "  H: ");
-		sLen = strlen(tmpText);
-
-		/* compute value position Height trigger level in mV or V */
-		tmp = (float)(Height_Y_cursor.Position) - (float)(pINFO->Position);			
-		cnvrtToVolts(tmp, &tmpText[sLen]);
-
-		/* add to string spaces and trigger L_level print Name*/
-		strcat(tmpText, "   ");
-		strcat(tmpText, "L: ");
-	
-		if((pnt_gOSC_MODE->AnalogSyncType == Sync_IN_WIN) || (pnt_gOSC_MODE->AnalogSyncType == Sync_OUT_WIN))
+		if(NewDrawState == ReDRAW)
 		{
-			/* prepare L_Level value text to print */
-			sLen = strlen(tmpText);
-
-			/* compute value position Low trigger level in mV or V */
-			tmp = (float)(Low_Y_cursor.Position) - (float)(pINFO->Position);			
-			cnvrtToVolts(tmp, &tmpText[sLen]);
+			/* Clear Print values string */
+			LCD_PutColorStrig(TriggShowInfo.X0, TriggShowInfo.Y0, 0, TriggShowInfo.Text, Active_BackColor);
 		}
-		else strcat(tmpText, "----  ");
+
+		/* if sync is a analog */
+		if(gSyncState.Sourse != CHANNEL_DIGIT)
+		{
+			/* change pINFO for needed channel */
+			if(gSyncState.Sourse == CHANNEL_A) pINFO = &INFO_A;
+			else pINFO = &INFO_B;
+
+			/* prepare H_Level value text to print */
+			strcpy(&TriggShowInfo.Text[0], "  H: ");
+			sLen = strlen(TriggShowInfo.Text);
+
+			/* compute value position Height trigger level in mV or V */
+			tmp = (float)(Height_Y_cursor.Position) - (float)(pINFO->Position);
+			cnvrtToVolts(tmp, &TriggShowInfo.Text[sLen]);
+
+			/* add to string spaces and trigger L_level print Name*/
+			strcat(TriggShowInfo.Text, "   ");
+			strcat(TriggShowInfo.Text, "L: ");
+
+			if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
+			{
+				/* prepare L_Level value text to print */
+				sLen = strlen(TriggShowInfo.Text);
+
+				/* compute value position Low trigger level in mV or V */
+				tmp = (float)(Low_Y_cursor.Position) - (float)(pINFO->Position);
+				cnvrtToVolts(tmp, &TriggShowInfo.Text[sLen]);
+			}
+			else strcat(TriggShowInfo.Text, "----  ");
+
+			/* prepare PosX value text to print */
+			strcat(TriggShowInfo.Text, "  ");
+			strcat(TriggShowInfo.Text, "X: ");
+			sLen = strlen(TriggShowInfo.Text);
+
+			/* compute value position X trigger in nS, uS, mS, or Sec. */
+			tmp = ((float)(trigPosX_cursor.Position) - (float)leftLimit);
+			cnvrtToTime(tmp, &TriggShowInfo.Text[sLen]);
+		}
+		else
+		{
+			/* prepare Condition value text to print */
+			strcpy(&TriggShowInfo.Text[0], "CM:");
+			sprintf(&TriggShowInfo.Text[strlen(TriggShowInfo.Text)], "0x%02X", EPM570_Register_LA_CND_MSK.data);
+			strcat(TriggShowInfo.Text, " CD:");
+			sprintf(&TriggShowInfo.Text[strlen(TriggShowInfo.Text)], "0x%02X", EPM570_Register_LA_CND_DAT.data);
+
+			/* add to string spaces and Different print Name*/
+			strcat(TriggShowInfo.Text, "  DM:");
+			sprintf(&TriggShowInfo.Text[strlen(TriggShowInfo.Text)], "0x%02X", EPM570_Register_LA_DIFF_MSK.data);
+			strcat(TriggShowInfo.Text, " DD:");
+			sprintf(&TriggShowInfo.Text[strlen(TriggShowInfo.Text)], "0x%02X", EPM570_Register_LA_DIFF_DAT.data);
+		}
+
+		/* prepare Sync type Name text to print */
+		sLen = strlen(TriggShowInfo.Text);
+		strcat(TriggShowInfo.Text, " <");
+		strcat(TriggShowInfo.Text, TriggShowInfo.triggType_Name[gSyncState.Type]);
+		strcat(TriggShowInfo.Text, ">");
+
+		/* Print values string */
+		LCD_PutColorStrig(TriggShowInfo.X0, TriggShowInfo.Y0, 0, TriggShowInfo.Text, LighGreen);
 	}
-	else if(pnt_gOSC_MODE->SyncSourse == CHANNEL_DIGIT)
-	{
-		/* prepare Condition value text to print */
-		strcpy(&tmpText[0], " Cond: ");
-		sLen = strlen(tmpText);
-		sprintf(&tmpText[sLen], "0x%02X", ConditionState_Sync_Var);
-	 	
-		/* add to string spaces and Difference print Name*/
-		strcat(tmpText, "  Diff: ");
-		sLen = strlen(tmpText);
-		sprintf(&tmpText[sLen], "0x%02X", DifferentState_Sync_Var);
-		
-		if(DifferentState_Sync_Rise == ENABLE) strcat(tmpText, "}");
-		else if	(DifferentState_Sync_Fall == ENABLE)strcat(tmpText, "{");
-	}
-	else return;
-
-	
-	/* prepare PosX value text to print */
-	strcat(tmpText, "  ");
-	strcat(tmpText, "X: ");
-	sLen = strlen(tmpText);
-
-	/* compute value position X trigger in nS, uS, mS, or Sec. */
-	tmp = ((float)(trigPosX_cursor.Position) - (float)leftLimit);
-	cnvrtToTime(tmp, &tmpText[sLen]);
-	
-	/* prepare Sync type Name text to print */
-	sLen = strlen(tmpText);
-	strcat(tmpText, " <");
-	strcat(tmpText, TriggShowInfo.triggType_Name[pnt_gOSC_MODE->AnalogSyncType]);
-	strcat(tmpText, ">");
-	
-
-	/* Print values string */
-	LCD_SetTextColor(LighGreen);
-	//LCD_SetFont(&timesNewRoman12ptFontInfo);    // установить шрифт
-	LCD_PutStrig(X0, Y0, 0, tmpText);
 }
 
 

@@ -30,7 +30,7 @@ void change_Div_A(void);
 void change_Div_B(void);
 void change_Sweep(void);
 void change_Sweep_Mode(void);
-void Sweep_Mode(Boolean Init);
+void Sweep_Mode(SyncMode_TypeDef NewSyncMode, Boolean Init);
 void change_Trigg_Mode(void);
 void Hide_Show_Meas(void);
 void RUN_HOLD(void);

@@ -14,11 +14,16 @@
 #include "Settings.h"
 #include "gInterface_MENU.h"
 #include "User_Interface.h"
-#include "inscriptions_Buttons.h"
 #include "Analog.h"
 #include "EPM570.h"
+#include "Synchronization.h"
+#include "Sweep.h"
 #include "Processing_and_output.h"
 #include "Measurments.h"
+#include "systick.h"
+
+#include "gOscModeButtons.c"
+//#include "gLAModeButtons.c"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -26,12 +31,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-#include "gOscModeButtons.c"
-#include "gLAModeButtons.c"
-
-//Boolean enChangeSyncMODE = FALSE;   // флаг изменения режима синхронизации
-
-
 
 Menu_Struct_TypeDef gInterfaceMenu = {
 		{ 0, 0, 0, 0 },		// Coordinates, not atemp
@@ -40,6 +39,7 @@ Menu_Struct_TypeDef gInterfaceMenu = {
 		0,
 		gInterfaceButtonsMAX,
 		0,
+		M_SKIP,
 		RIGHT,
 		LEFT,
 		{
@@ -47,7 +47,7 @@ Menu_Struct_TypeDef gInterfaceMenu = {
 			&btnSWEEP_MODE, &btnTRIG, &btnMEASURMENTS, &btnRUN_HOLD,
 			&btnCHA_AC_DC, &btnCHB_AC_DC, &btnTIME_SCALE
 		},
-		(void*)0
+		(void*)0,
 };
 
 char *gmessage;
@@ -75,6 +75,8 @@ void qMenu(void)
 {
 	if(ButtonsCode == UP)
 	{
+		LCD_DrawButton(btn, NO_activeButton);
+
 		QuickMenu.Coord[0] -= 2;
 		SetActiveMenu(&QuickMenu);	// делаем активным быстрое меню
 		Draw_Menu(&QuickMenu);
@@ -119,9 +121,9 @@ void change_Div_B(void)
 static void Change_Analog_Div(Channel_ID_TypeDef Channel)
 {
 	Menu_Struct_TypeDef *tMenu = (Channel == CHANNEL_A)? &ChannelA_Menu : &ChannelB_Menu;
-//	static FunctionalState AutoDivTrig = ENABLE;
 
-	Set_CH_TypeINFO(Channel);		// Change pointer pINFO corresponding to input <Channel>
+	/* Change pointer pINFO to input <Channel> */
+	Set_CH_TypeINFO(Channel);
 	
 	/* проверка нажатий кнопок вверх/вниз и изменение делителя */
 	if(ButtonsCode != OK)
@@ -137,6 +139,7 @@ static void Change_Analog_Div(Channel_ID_TypeDef Channel)
 	}
 	else
 	{
+		LCD_DrawButton(btn, NO_activeButton);
 		SetActiveMenu(tMenu);					// Set active menu corresponding to input <Channel>
 		Draw_Menu(tMenu);
 		return;
@@ -159,9 +162,7 @@ static void Change_Analog_Div(Channel_ID_TypeDef Channel)
 *******************************************************************************/
 void change_Sweep(void)
 {
-	static uint16_t OscNumPoints = 388;
-	static uint8_t WinPosition = 0, TrigPosition = 0;
-	static Boolean NumPointsSaveFlag = TRUE;
+	char tmpText[30] = "Decim:  ";
 
 	if(ButtonsCode == DOWN)
 	{
@@ -171,18 +172,6 @@ void change_Sweep(void)
 
 			if(gOSC_MODE.Interleave == TRUE) SweepScale = (uint8_t*)&IntrlSweepScaleCoff[ScaleIndex];
 			else SweepScale = (uint8_t*)&SweepScaleCoff[ScaleIndex];
-
-			if(ScaleIndex == 0)
-			{
-				DrawTrig_PosX(CLEAR, &trigPosX_cursor);
-
-				pnt_gOSC_MODE->oscNumPoints = OscNumPoints;
-				pnt_gOSC_MODE->WindowPosition = WinPosition;
-				trigPosX_cursor.WindowPosition = TrigPosition;
-				gOSC_MODE.Interleave = FALSE;
-				NumPointsSaveFlag = TRUE;
-				Draw_btnTIME_SCALE(0);
-			}
 		}
 		else if(SweepIndex < 20) SweepIndex++;
 	}
@@ -195,21 +184,6 @@ void change_Sweep(void)
 		}
 		else if(SweepIndex == 0)
 		{
-			if(NumPointsSaveFlag == TRUE)
-			{
-				NumPointsSaveFlag = FALSE;
-				OscNumPoints = pnt_gOSC_MODE->oscNumPoints;
-				WinPosition = pnt_gOSC_MODE->WindowPosition;
-				TrigPosition = trigPosX_cursor.WindowPosition;
-
-				pnt_gOSC_MODE->oscNumPoints = 388;
-				pnt_gOSC_MODE->WindowPosition = 0;
-				trigPosX_cursor.WindowPosition = 0;
-
-				Reset_TimeScale_Menu();
-				Draw_btnTIME_SCALE(0);
-			}
-
 			if(ScaleIndex < 3) ScaleIndex++;
 
 			/* Enable interlive if only channel A is ON */
@@ -230,28 +204,19 @@ void change_Sweep(void)
 	}
 	else if(ButtonsCode == NO_Push);
 	else return;  
-	
-	if(gOSC_MODE.Interleave == TRUE) SweepScale = (uint8_t*)&IntrlSweepScaleCoff[ScaleIndex];
-	else SweepScale = (uint8_t*)&SweepScaleCoff[ScaleIndex];
 
-	if(ScaleIndex > 0)
-	{
-		pnt_gOSC_MODE->oscNumPoints = pnt_gOSC_MODE->WindowWidh / (*SweepScale);
-		btnSWEEP.Text = (char *)&sweep_Scale_text[ScaleIndex - 1];
-	}
-	else
-	{
-		btnSWEEP.Text = (char *)&sweep_text[SweepIndex];
-	}
-	
-	pnt_gOSC_MODE->oscSweep = sweep_coff[SweepIndex] - 1;
-	
-//	pnt_gOSC_MODE->WindowWidh = 500 / SwipScale;
-	
-	Set_Decimation(pnt_gOSC_MODE->oscSweep);		/* обновляем регистры ПЛИС - Decimation */	
-	Set_numPoints(pnt_gOSC_MODE->oscNumPoints);		/* обновляем регистры ПЛИС в зависимости от oscNumPoints_Ratio */
-	Update_triggInfo_OnScreen(ReDRAW);				/* обновляем инфо триггера */
+	if(ScaleIndex > 0) btnSWEEP.Text = (char *)&sweep_Scale_text[ScaleIndex - 1];
+	else btnSWEEP.Text = (char *)&sweep_text[SweepIndex];
+
+	Sweep_UpdateState();
+
 	Init_Meas_Values();
+	Update_triggInfo_OnScreen(ReDRAW);
+
+	sprintf(&tmpText[7], "%d", (int)(gSamplesWin.Sweep + 1));
+	strcpy(&tmpText[strlen(tmpText)], "  Scale: ");
+	sprintf(&tmpText[strlen(tmpText)], "%d", (*SweepScale));
+	Show_Message(tmpText);
 }
 
 
@@ -277,17 +242,18 @@ static void Auto_Sweep(void)
 *******************************************************************************/
 void change_Sweep_Mode(void)
 {
-	if(ActiveMode == &FFT_MODE) return;
+	if(ActiveMode != &FFT_MODE)
+	{
+		if((ButtonsCode == UP) || (ButtonsCode == OK)) gSyncState.Mode++;
+		else if(ButtonsCode == DOWN) gSyncState.Mode--;
+		else return;
 
-	if((ButtonsCode == UP) || (ButtonsCode == OK))pnt_gOSC_MODE->oscSync++;
-	else if(ButtonsCode == DOWN) pnt_gOSC_MODE->oscSync--;
-	else return;
+		if(gSyncState.Mode > Sync_SINGL) gSyncState.Mode = Sync_NONE;
+		else if (gSyncState.Mode < Sync_NONE) gSyncState.Mode = Sync_SINGL;
 
-	if(pnt_gOSC_MODE->oscSync > 3) pnt_gOSC_MODE->oscSync = 0;
-	else if (pnt_gOSC_MODE->oscSync < 0) pnt_gOSC_MODE->oscSync = 3;
-
-	setCondition(RUN);
-	Sweep_Mode(FALSE);
+		Sweep_Mode(gSyncState.Mode, FALSE);
+		setCondition(RUN);
+	}
 }
 
 
@@ -298,25 +264,28 @@ void change_Sweep_Mode(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void Sweep_Mode(Boolean Init)
+void Sweep_Mode(SyncMode_TypeDef NewSyncMode, Boolean Init)
 {
-	gInterfaceMenu.Buttons[4]->Text = (char*)&sweepMODE_text[pnt_gOSC_MODE->oscSync];
+	gInterfaceMenu.Buttons[4]->Text = (char*)&sweepMODE_text[NewSyncMode];
 
-	if(pnt_gOSC_MODE->oscSync != Sync_NONE)
+	if(gSyncState.Sourse != CHANNEL_DIGIT)
 	{
-		SetActiveTrigCursor(&Height_Y_cursor);
-		Draw_Cursor_Trig(CLEAR, LightGray4, Red);
-	}
-	else 
-	{
-		/* Очищаем линии указателей уровней триггера */
-		if(Init != TRUE) Draw_Cursor_Trig(CLEAR, Active_BackColor, Active_BackColor);
-		Draw_CH_Cursors();
+		if(NewSyncMode != Sync_NONE)
+		{
+			SetActiveTrigCursor(&Height_Y_cursor);
+			Draw_Cursor_Trig(CLEAR, LightGray4, Red);
+		}
+		else
+		{
+			/* Очищаем линии указателей уровней триггера */
+			if(Init != TRUE) Draw_Cursor_Trig(CLEAR, Active_BackColor, Active_BackColor);
+			Draw_CH_Cursors();
+		}
 	}
 
-	/* Update trig X and sync mode */
+	/* Update trig X */
+	gSyncState.Mode = NewSyncMode;
 	Trigg_Position_X();
-	EPM570_Sync(pnt_gOSC_MODE->oscSync);				// Update sync mode
 }
 
 
@@ -333,21 +302,28 @@ void change_Trigg_Mode(void)
 
 	if(ButtonsCode == UP)
 	{
-		SetActiveMenu(&TrigMenu);					// делаем активным меню триггера
+		/* Clear current active button */
+		LCD_DrawButton(btn, NO_activeButton);
+
+		/* Switch to TrigMenu */
+		SetActiveMenu(&TrigMenu);
 		Draw_Menu(&TrigMenu);
 	}
-	else if((ButtonsCode == OK) && (pnt_gOSC_MODE->oscSync != Sync_NONE))
+	else if((ButtonsCode == OK) && (gSyncState.Mode != Sync_NONE))
 	{ 
 		/* изменяем указатель на функцию изменения уровней триггера */
 		pMNU = Change_Trig_X_Y_onMainMenu;
 		
-		pntTrigCursor = &Height_Y_cursor;
+		if(gSyncState.Sourse != CHANNEL_DIGIT)
+		{
+			pntTrigCursor = &Height_Y_cursor;
 
-		/* обновляем курсоры уровня триггера */
-		Draw_Cursor_Trig(DRAW, Active_BackColor, Red);
+			/* обновляем курсоры уровня триггера */
+			Draw_Cursor_Trig(DRAW, Active_BackColor, Red);
+		}
 
-		/* обновляем инфо триггера */
-		Update_triggInfo_OnScreen(ReDRAW);
+//		/* обновляем инфо триггера */
+//		Update_triggInfo_OnScreen(ReDRAW);
 
 		btn->Active_Color = GrayBlue;
 		return;
@@ -375,19 +351,19 @@ void Hide_Show_Meas(void)
 		X_TrigPositionPrecent = (((rightLimit - leftLimit) - 1) * 100) / (trigPosX_cursor.Position - leftLimit);
 
 		/* если автоизмерения были выключены то отрисовываем боковую панель */
-		if(pnt_gOSC_MODE->autoMeasurments == OFF)
+		if(gOSC_MODE.autoMeasurments == OFF)
 		{
 			/* Save show fft freq status */
 			FrequencyMeas_SaveRestore_State(1, &gShowFFTFreq);
 			FrequencyMeas_Draw(FALSE);
 
-			pnt_gOSC_MODE->autoMeasurments = ON;
+			gOSC_MODE.autoMeasurments = ON;
 			Init_Meas_Values();
 			Draw_Menu(&MeasMenu);
 		}
 		else		// иначе очищаем
 		{
-			pnt_gOSC_MODE->autoMeasurments = OFF;
+			gOSC_MODE.autoMeasurments = OFF;
 			Clear_Menu(&MeasMenu);
 
 			/* Restore show fft freq status */
@@ -396,21 +372,19 @@ void Hide_Show_Meas(void)
 		}
 
 		if(TriggShowInfo.Status == ENABLE) Draw_Trigg_Info(ENABLE);
-		if(pnt_gOSC_MODE->oscSync != Sync_NONE)
-		{
-			DrawTrig_PosX(CLEAR, &trigPosX_cursor);						// очищаем старый курсор
-			trigPosX_cursor.Position = (uint16_t)((((rightLimit - leftLimit) - 1) * 100) / X_TrigPositionPrecent) + leftLimit;
-			DrawTrig_PosX(DRAW, &trigPosX_cursor);						// перерисовуем курсор по новой позиции
-			Set_numPoints(pnt_gOSC_MODE->oscNumPoints);	   				/* обновляем количество точек */
-			Update_triggInfo_OnScreen(ReDRAW);							/* обновляем инфо триггера */
-		}
-	}
-	else if((ButtonsCode == UP) && (pnt_gOSC_MODE->autoMeasurments == ON))
-	{
-		saveActiveButton(btn);					// сохраняем текущую активную кнопку
-		LCD_DrawButton(btn, NO_activeButton); 	// перерисовать кнопку как неактивную
-		SetActiveMenu(&MeasMenu);					// делаем активным меню автоизмерений
 
+		DrawTrig_PosX(CLEAR, &trigPosX_cursor);						// очищаем старый курсор
+		trigPosX_cursor.Position = (uint16_t)((((rightLimit - leftLimit) - 1) * 100) / X_TrigPositionPrecent) + leftLimit;
+		DrawTrig_PosX(DRAW, &trigPosX_cursor);						// перерисовуем курсор по новой позиции
+		Update_triggInfo_OnScreen(ReDRAW);							/* обновляем инфо триггера */
+
+		gSyncState.foops->StateUpdate();
+	}
+	else if((ButtonsCode == UP) && (gOSC_MODE.autoMeasurments == ON))
+	{
+		LCD_DrawButton(btn, NO_activeButton);
+
+		SetActiveMenu(&MeasMenu);
 		setActiveButton(MeasMenu.Buttons[MeasMenu.StartButton]);
 		LCD_DrawButton(btn, activeButton);
 	}
@@ -426,13 +400,19 @@ void Hide_Show_Meas(void)
 *******************************************************************************/
 void RUN_HOLD(void)
 {  
-	const char *txt0 = "STOP", *txt1 = "RUN";
-	if(ButtonsCode == UP){ pnt_gOSC_MODE->State = RUN; btn->Text = (char*)txt1; }
-	else if(ButtonsCode == DOWN){ pnt_gOSC_MODE->State = STOP; btn->Text = (char*)txt0; }
-	else if(ButtonsCode == OK)
+	if((ButtonsCode == UP) || (ButtonsCode == DOWN) || (ButtonsCode == OK))
 	{
-		if(pnt_gOSC_MODE->State == RUN){ pnt_gOSC_MODE->State = STOP; btn->Text = (char*)txt0; }
-		else { pnt_gOSC_MODE->State = RUN; btn->Text = (char*)txt1; }
+		if(gOSC_MODE.State == RUN)
+		{
+			setCondition(STOP);
+			Show_Message("HOLD, power save ON");
+		}
+		else
+		{
+			setCondition(RUN);
+			if(gOSC_MODE.PowerSave == PWR_S_DISABLE) Show_Message("RUN, power save OFF");
+			else Show_Message("RUN, power save ON");
+		}
 	}
 }
 
@@ -469,10 +449,7 @@ void ON_OFF_CHANNEL_B(void)
 		else if(gOSC_MODE.Interleave == TRUE) gOSC_MODE.Interleave = FALSE;
 		else return;
 
-//		setActiveButton(&btnSWEEP);
-		ButtonsCode = NO_Push;
-		change_Sweep();
-//		setActiveButton(&btnCHB_AC_DC);
+		Sweep_UpdateState();
 	}
 }
 
@@ -486,10 +463,12 @@ void ON_OFF_CHANNEL_B(void)
 *******************************************************************************/
 void ON_OFF_Channels(CH_INFO_TypeDef * Channel)
 {
+	static const char ON_OFF_TEXT[3][4] = { {"OFF"}, {"AC "}, {"DC "} };
+
 	/* проверка нажатий кнопок и изменения индекса канала если были нажаты */
 	if((ButtonsCode == UP) || (ButtonsCode == OK)) Channel->Mode.AC_DC++;
 	else if(ButtonsCode == DOWN) Channel->Mode.AC_DC--;
-
+	else return;
 	if(Channel->Mode.AC_DC > 2) Channel->Mode.AC_DC = 0;
 	else if(Channel->Mode.AC_DC < 0) Channel->Mode.AC_DC = 2;
 
@@ -503,7 +482,7 @@ void ON_OFF_Channels(CH_INFO_TypeDef * Channel)
 		Channel->Mode.EN = RUN;
 
 		/* пишем в регистр ПЛИС открытый или закрытый вход в зависимости от pnt_Channel->AC_DC */
-		Set_Input(Channel->Mode.ID, Channel->Mode.AC_DC);
+		Analog_SetInput_ACDC(Channel->Mode.ID, Channel->Mode.AC_DC);
 	}
 
 	/* обновляем текст на кнопке соответсвующего канала */
@@ -522,13 +501,7 @@ void change_TIME_SCALE(void)
 {
 	if(ButtonsCode == OK)
 	{
-		if((SweepIndex == 0) && (ScaleIndex > 0))
-		{
-			Show_Message("Scale not avable in this time/div");
-			return;
-		}
-
-		if((*SweepScale) == 1) pMNU = TimeScale_Menu;				// изменяем указатель на функцию меню
+		pMNU = TimeScale_Menu;
 		Draw_TimeScale_Menu(DRAW);
 	}
 }

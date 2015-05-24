@@ -12,8 +12,9 @@
 #include "stm32f10x.h"
 #include "defines.h"
 #include "init.h"
-#include "main.h"
 #include "systick.h"
+#include "main.h"
+#include "init.h"
 #include "Settings.h"
 #include "HX8352_Library.h"
 #include "colors 5-6-5.h"
@@ -25,9 +26,11 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define I2C_Speed             100000
-#define GPIO_Pin_7_0          (uint16_t)0x00FF
-#define GPIO_Pin_8_15         (uint16_t)0xFF00
+#define I2C_Speed             	100000
+#define GPIO_Pin_7_0          	(uint16_t)0x00FF
+#define GPIO_Pin_8_15         	(uint16_t)0xFF00
+
+#define SYSTICK_RELOAD_VAL 		72000
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -35,6 +38,7 @@ extern __IO uint8_t IN_HostData[CMD_MAX_SIZE];
 
 /* Private function prototypes -----------------------------------------------*/
 static void ExHardware_Init_ERROR(void);
+
 
 /* Functions ----------------------------------------------------------------*/
 /*******************************************************************************
@@ -358,10 +362,6 @@ static void USART_Config(void)
 
 	/* Enable USART1 RX DMA1 Channel */
 	DMA_Cmd(DMA1_Channel5, ENABLE);
-
-	// устанавливаем приоритет и разрешаем прерывания USART1
-	//NVIC_EnableIRQ(USART1_IRQn);
-	//NVIC_SetPriority(USART1_IRQn, 1);
 }
 
 
@@ -465,17 +465,17 @@ static void EPM570_Init(void)
 	LCD_PutColorStrig(Xstr, 170, 0, "write/read EPM570 registers...", White);
 
 	delay_ms(1);
-	Set_numPoints(20); 
+	EPM570_Set_numPoints(20); 
 
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
 
-	if(Write_SRAM() == STOP)
+	if(EPM570_SRAM_Write() == STOP)
 	{
 		LCD_PutColorStrig(20, 150, 0, "ERROR write cycle SRAM...", Red);
 		ExHardware_Init_ERROR();
 	}   
 
-	Read_SRAM();
+	EPM570_SRAM_Read();
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
 	Xstr = LCD_PutColorStrig(20, 150, 0, "SUCCESSFUL ", LightGreen);
 	LCD_PutColorStrig(Xstr, 150, 0, "write/read cycle SRAM...", White);
@@ -493,9 +493,9 @@ static void ExHardware_Init_ERROR(void)
 	while(1)
 	{
 		Beep_Start();
-		EPM570_ChangeBackLight(0);
+		EPM570_Set_BackLight(0);
 		delay_ms(1000);
-		EPM570_ChangeBackLight(1);
+		EPM570_Set_BackLight(1);
 		delay_ms(1000);
 	}
 }
@@ -522,8 +522,7 @@ void Global_Init(void)
 	Host_IQueue_Initialization();
 	USART_DMA_DefaultConfiguration();
 
-	delay_init();	
-	delay_ms(100);
+	delay_init();
 //	if(ON_OFF_button == 0) GPIOC->BRR = GPIO_Pin_15;
 }
 
@@ -601,3 +600,9 @@ void Start_Bootloader(void)
 }
 
 
+
+
+
+/*********************************************************************************************************
+      END FILE
+*********************************************************************************************************/

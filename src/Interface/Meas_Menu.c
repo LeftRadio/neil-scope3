@@ -9,7 +9,7 @@ Comments    :
 **************************************************************************************/
 
 /* Includes ------------------------------------------------------------------*/
-#include <math.h>                           /* */
+#include <math.h>
 
 #include "main.h"
 #include "Meas_Menu.h"
@@ -18,7 +18,6 @@ Comments    :
 #include "Processing_and_output.h"
 #include "Settings.h"
 #include "MeasButtons.c"
-
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -39,10 +38,11 @@ Menu_Struct_TypeDef MeasMenu = {
 		MeasButtonsMAX,
 		MeasButtonsMAX,
 		MeasButtonsMAX,
+		M_NTH,
 		DOWN,
 		UP,
 		{ &btnMeasCursor1, &btnMeasCursor2, &btnMeasMode },
-		&MeasMenuCallBack
+		&MeasMenuCallBack,
 };
 
 

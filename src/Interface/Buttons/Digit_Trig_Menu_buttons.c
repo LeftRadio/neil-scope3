@@ -10,13 +10,11 @@ Comments    :
 
 #define DigitTrigButtonsMAX		15
 
-   //316
 #define btnNumHeight			18
 #define btnNumWidth				18
 #define btnSW					2
-#define LeftLineBtn 			(395 - ((btnNumWidth + btnSW) * 8))
+#define LeftLineBtn 			(398 - ((btnNumWidth + btnSW) * 8))
 #define LowerBtn 				(200 - (btnNumHeight * 2))
-//#define UpLineBtn				((LowerBtn - 4) + ((btnNumHeight + btnSW) * 2))
 
 
 /* Digit_Condition_Num -------------------------------------------------------------------------------- */

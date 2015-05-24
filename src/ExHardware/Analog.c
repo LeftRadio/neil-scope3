@@ -50,6 +50,8 @@ static const DIV_INFO  Div_Coeff_massive[12]	= {
 static uint8_t gAnalogDivider_A_index = 0, gAnalogDivider_B_index = 0;
 static FunctionalState AutoDividerState[2] = { DISABLE, DISABLE };
 
+Channel_ID_TypeDef param_auto_div = 255;
+
 /* Private function prototypes -----------------------------------------------*/
 static __inline int8_t Signal_Limit_Exceeded (int8_t *Data);
 
@@ -105,8 +107,8 @@ char *Change_AnalogDivider(Channel_ID_TypeDef channel, uint8_t divider_index)
 
 		Relay_A(relay_state);
 		
-		/* очищаем текущее положение делителя, младшие 3 бита регистра extPin_reg_1 */	
-	    EPM570_extPin_1_DATA &= (uint8_t)(~0x07);
+		/* очищаем текущее положение делителя, младшие 3 бита (EPM570_extPin_1_DATA & ~0b00000111) регистра extPin_reg_1 */
+		EPM570_Register_extPin_1.bits &= (uint8_t)(~0x07);
 	}
 	else if(channel == CHANNEL_B)
 	{
@@ -115,13 +117,14 @@ char *Change_AnalogDivider(Channel_ID_TypeDef channel, uint8_t divider_index)
 		Relay_B(relay_state);
 		register_code = register_code << 3;
 
-		/* очищаем текущее положение делителя, 3 бита (EPM570_extPin_1_DATA & ~0b00111000) регистра extPin_reg_1 */	
-		EPM570_extPin_1_DATA &= (uint8_t)(~0x38);
+		/* очищаем текущее положение делителя, 3 бита с смещением 3 (EPM570_extPin_1_DATA & ~0b00111000) регистра extPin_reg_1 */
+		EPM570_Register_extPin_1.bits &= (uint8_t)(~0x38);
 	}
 	else return 0;	
 
 	/* пишем новое значение */
-	EPM570_Write_Register(extPin_reg_1, EPM570_extPin_1_DATA | register_code);
+	EPM570_Register_extPin_1.bits |= register_code;
+	EPM570_Registers_WriteReg(EPM570_Register_extPin_1.address, EPM570_Register_extPin_1.bits);
 
 	return (char*)&Div_Coeff_massive[divider_index].V_DIV_Text[0];
 }
@@ -185,7 +188,11 @@ FunctionalState Get_AutoDivider_State(Channel_ID_TypeDef CH)
 *******************************************************************************/
 void Set_AutoDivider_State(Channel_ID_TypeDef CH, FunctionalState NewState)
 {
-	AutoDividerState[CH] = NewState;
+	if(CH != 255)
+	{
+		if(CH == BOTH_CHANNEL){ AutoDividerState[0] = NewState; AutoDividerState[1] = NewState; }
+		else AutoDividerState[CH] = NewState;
+	}
 }
 
 
@@ -243,3 +250,54 @@ static __inline int8_t Signal_Limit_Exceeded (int8_t *Data)
 	else if(diff < 50) return -1;
 	else return 0;
 }
+
+
+
+
+/**
+  * @brief  Function_Name
+  * @param  None
+  * @retval None
+  */
+void Analog_SetInput_ACDC(uint8_t Channel, Channel_AC_DC_TypeDef AC_DC_NewState)
+{
+	if(Channel == CHANNEL_A)
+	{
+		if(AC_DC_NewState == RUN_DC) EPM570_Register_extPin0.bit.O_C_A = 1;
+		else EPM570_Register_extPin0.bit.O_C_A = 0;
+	}
+	else
+	{
+		if(AC_DC_NewState == RUN_DC) EPM570_Register_extPin0.bit.O_C_B = 1;
+		else EPM570_Register_extPin0.bit.O_C_B = 0;
+	}
+
+	EPM570_Registers_WriteReg(EPM570_Register_extPin0.address, EPM570_Register_extPin0.bits);
+}
+
+
+
+/**
+  * @brief  Function_Name
+  * @param  None
+  * @retval None
+  */
+void Analog_InteliveMode(Boolean NewState)
+{
+	if(NewState == TRUE)
+	{
+		EPM570_Register_cnfPin_B.bit.INTRL_0_1 = 0x02;
+		GPIOA->BRR = GPIO_BRR_BR13;
+	}
+	else
+	{
+		EPM570_Register_cnfPin_B.bit.INTRL_0_1 = 0x00;
+		GPIOA->BSRR = GPIO_BSRR_BS13;
+	}
+
+	EPM570_Registers_WriteReg(EPM570_Register_cnfPin_B.address, EPM570_Register_cnfPin_B.bits);
+}
+
+
+
+

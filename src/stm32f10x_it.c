@@ -16,6 +16,7 @@ Comments:   :  This file provides template for all exceptions handler and
 #include "EPM570.h"
 #include "Settings.h"
 #include "User_Interface.h"
+#include "init.h"
 #include "systick.h"
 #include "IQueue.h"
 #include "defines.h"
@@ -36,15 +37,12 @@ ButtonsPush_TypeDef ButtonPush = B_RESET;         	// флаг нажатия н
 uint8_t speed_up_cnt = 0;
 
 FlagStatus MessageEvent = RESET;
-
 extern btnINFO btnRUN_HOLD;
-//#ifdef __VAR_DEBUG__
-//extern __IO uint32_t dCommandCounter;
-//extern __IO uint32_t dTrDataCounter;
-//#endif
+
 
 /* Extern function -----------------------------------------------------------*/
 extern void Error_message(char* message_text);
+extern uint8_t EPM570_Registers_GetOperateStatus(void);
 
 
 /******************************************************************************/
@@ -203,10 +201,10 @@ void RTC_IRQHandler(void)
 		}
 
 		// Verify auto power OFF
-		if((pnt_gOSC_MODE->OFF_Struct.State == ENABLE) && (HostMode != ENABLE))
+		if((AutoOff_Timer.State == ENABLE) && (HostMode != ENABLE))
 		{
-			tTime = Curent_RTC_Counter - pnt_gOSC_MODE->OFF_Struct.ResetTime;
-			wTime = pnt_gOSC_MODE->OFF_Struct.Work_Minutes * 60;
+			tTime = Curent_RTC_Counter - AutoOff_Timer.ResetTime;
+			wTime = AutoOff_Timer.Work_Minutes * 60;
 
 			if(tTime >= wTime)
 			{
@@ -272,7 +270,7 @@ void TIM2_IRQHandler(void)
 #endif
 
 	/* If EPM registers not busy then read buttons register */
-	if(Get_EPM570_Register_Operate_Status() == 0) ButtonsCode = EPM570_Read_Keys();
+	if(EPM570_Registers_GetOperateStatus() == 0) ButtonsCode = EPM570_Read_Keys();
 	
 	/* If any button is pressed */
 	if(ButtonsCode != NO_Push)
@@ -283,60 +281,31 @@ void TIM2_IRQHandler(void)
 		}
 		else
 		{
-			if(BtnPushRetentionCnt++ > 3) ButtonPush = SHORT_SET;
+			if(BtnPushRetentionCnt++ > 2) ButtonPush = SHORT_SET;
 			else ButtonPush = B_RESET;
 		}
 
-		if(SRAM_GetWriteState() != COMPLETE)
+		if(EPM570_SRAM_GetWriteState() != COMPLETE)
 		{
 			if(btn == &btnRUN_HOLD)
 			{
-				if((ButtonsCode != DOWN) && (ButtonsCode != OK)) SRAM_SetWriteState(STOP);
+				if((ButtonsCode != DOWN) && (ButtonsCode != OK)) EPM570_SRAM_SetWriteState(STOP);
 			}
-			else SRAM_SetWriteState(STOP);
+			else EPM570_SRAM_SetWriteState(STOP);
 		}
 
 		/* Reset auto off timer */
-		if(pnt_gOSC_MODE->OFF_Struct.Vbatt != 1)
+		if(AutoOff_Timer.Vbatt != 1)
 		{
-			pnt_gOSC_MODE->OFF_Struct.ResetTime = RTC_GetCounter();
+			AutoOff_Timer.ResetTime = RTC_GetCounter();
 		}
 	}
-	else //if((ButtonsCode == NO_Push) && (prvsButtonPush == SHORT_SET))
+	else
 	{
 		prvsButtonPush = ButtonPush = B_RESET;
-//		prvsButtonPush = B_RESET;
 		BtnPushRetentionCnt = 0;
 		speed_up_cnt = 0;
 	}
-
-//	/* обработка нажатия кнопок */
-//	if(New_ButtonsCode != NO_Push)
-//	{
-//		Old_ButtonsCode = New_ButtonsCode;
-//		BtnResetRetentionCnt = 0;
-//
-//		if(ButtonEnable != SET) return;
-//		if(prvsButtonPush == B_RESET) prvsButtonPush = SHORT_SET;
-//		else if(BtnPushRetentionCnt++ > 4){	ButtonsCode = Old_ButtonsCode; prvsButtonPush = ButtonPush = LONG_SET; }
-//		else return;
-//
-//		if(wrSRAM != wrSRAM_DONE) wrSRAM = wrSRAM_STOP;
-//		pnt_gOSC_MODE->OFF_Struct.ResetTime = RTC_GetCounter();
-//	}
-//	else if(New_ButtonsCode == NO_Push) //&& (prvsButtonPush == 1))
-//	{
-//		if((ButtonEnable == SET) && ((prvsButtonPush == SHORT_SET) && (BtnPushRetentionCnt < 5)))
-//		{
-//			ButtonsCode = Old_ButtonsCode;
-//			ButtonPush = SHORT_SET;
-//		}
-//
-//		if(BtnResetRetentionCnt++ > 5){ ButtonEnable = SET; }
-//		prvsButtonPush = B_RESET;
-//		BtnPushRetentionCnt = 0;
-//		speed_up_cnt = 0;
-//	}
 }
 
 
@@ -435,9 +404,8 @@ void ADC1_2_IRQHandler(void)
 	i++;
 	if(i >= 5)
 	{
-		temp = (((float)ADC_Sum * 3.3 * 2.5) / 20480) - 3.50;
-		ADC_VbattPrecent = (uint8_t)((temp * 100) / (4.15 - 3.50));
-		if(ADC_VbattPrecent < 0) ADC_VbattPrecent = 0;
+		temp = (((float)ADC_Sum * 3.3 * 2.5) / 20480) - 3.45;
+		ADC_VbattPrecent = (uint8_t)((temp * 100) / (4.10 - 3.45));
 		ADC_Sum = i = 0;
 		show_ADC_flag = SET;
 	}
@@ -497,13 +465,13 @@ void DMA1_Channel5_IRQHandler(void)
 			if((IQueue->Data[1] == 0x80) && (IQueue->Data[2] == 0x5B))
 			{
 				IQueue->Data[0] = 0x5B;
-				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[1];	// Memory addr
 				DMA1_Channel5->CNDTR = 2;							// Set to default data length
+				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[1];	// Memory addr
 			}
 			else	/* Normal connecting */
 			{
-				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[0];	// Memory addr
 				DMA1_Channel5->CNDTR = 3;							// Set to default data length
+				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[0];	// Memory addr
 			}
 
 			stg = 0;

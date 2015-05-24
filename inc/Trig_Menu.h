@@ -29,7 +29,10 @@ typedef struct 	  /* тип данных курсоров триггера */
 
 typedef struct   /* тип данных параметров триггера для вывода на экран */
 {
-	char *triggType_Name[4];
+	char *triggType_Name[8];
+	const uint16_t X0;
+	const uint16_t Y0;
+	char Text[60];
 	FunctionalState Status;
 } TriggShowInfo_TypeDef;
 
@@ -40,16 +43,15 @@ typedef struct   /* тип данных параметров триггера д
 
 /* Exported variables --------------------------------------------------------*/
 extern TrigCursorINFO *pntTrigCursor;
-extern TrigCursorINFO *TempTrigCursor;
 extern TrigCursorINFO Height_Y_cursor, Low_Y_cursor, trigPosX_cursor;	 // курсоры триггера
 extern TriggShowInfo_TypeDef  TriggShowInfo;
-
 extern const char Trigg_Sourse_Sync_Text[3][10];
 
+
 /* Private function prototypes -----------------------------------------------*/
-void Change_SyncSourse(void);
-void Sync_Sourse_Texts(void);
-void Change_Trigg_ModeSync(void);
+void Update_SyncSourse_Texts(void);
+void Trigg_SyncType(void);
+void Trigg_SyncSourse(void);
 void Change_H_CursorLevel(void);
 void Change_L_CursorLevel(void);
 void Sync_ChangeLevel(TrigCursorINFO *Cursor, int16_t Diff);
@@ -63,6 +65,9 @@ extern void Change_Trig_Menu_indx(void);						// Функция смены ин�
 extern void Change_Trig_X_Y_onMainMenu(void);					// Функция изменения уровней триггера из основного меню
 extern void Trigg_Position_X(void);
 extern void Update_triggInfo_OnScreen(DrawState NewDrawState);
+
+
+
 
 
 #endif /* __TRIG_MENU_H */

@@ -19,8 +19,9 @@
 #include "Measurments.h"
 #include "Processing_and_output.h"
 #include "Trig_Menu.h"
-#include "systick.h"
+#include "init.h"
 #include "Host.h"
+#include "Sweep.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -30,7 +31,6 @@ static void Processing_Analog_CH(gChannel_MODE CH_Mode);
 static void Processing_Digit_CH(gChannel_MODE CH_Mode);
 
 static __inline void Data_Reprocessing(void);
-//static __inline int8_t Signal_Limit_Exceeded (int8_t *Data);
 
 static __inline void DrawClear_iLine(uint16_t X0pos, uint16_t Y0pos, uint16_t Y1pos, DrawState NewDrawState);
 static __inline void DrawClear_MAXMIN_Line(uint16_t X0pos, uint16_t Y0pos, uint16_t Y1pos, DrawState NewDrawState);
@@ -52,7 +52,7 @@ CH_INFO_TypeDef INFO_A =
 		DarkOrange2 + (10 << 11) + (20 << 5),	// Цвет канала
 		155,
 		{ CHANNEL_A, ON, RUN_AC },				// ID, state, indx(STOP; RUN_AC; RUN_DC)
-		{0},              						// данные канала
+		{0},             						// данные канала
 		{0},            						// данные для вывода и очистки на экран
 		{DISABLE},  			   				// данные для очистки экрана
 
@@ -63,7 +63,6 @@ CH_INFO_TypeDef INFO_A =
 						Divider_Position_MAX,	// положение аналогового делителя
 						{80}, 	   				// массив значений ШИМ для каждого положения аналогового делителя
 						&TIM3->CCR4,
-//						{0},					// FFT Magnitude buffer
 				},
 		},
 
@@ -76,7 +75,7 @@ CH_INFO_TypeDef INFO_B =
 		DarkAuqa + (10 << 11) + (10 << 5) + 10,	// Цвет канала
 		65,                     				// координата на экране указателя канала
 		{ CHANNEL_B, ON, RUN_AC },				// ID, state, indx(STOP; RUN_AC; RUN_DC)
-		{0},              						// данные канала
+		{0},              					// данные канала
 		{0},            						// данные для вывода и очистки на экран
 		{DISABLE},  			   				// данные для очистки экрана
 
@@ -87,7 +86,6 @@ CH_INFO_TypeDef INFO_B =
 						Divider_Position_MAX,	// положение аналогового делителя
 						{80}, 	   				// массив значений ШИМ для каждого положения аналогового делителя
 						&TIM3->CCR3,
-//						{0},					// FFT Mag bufer
 				},
 		},
 
@@ -117,10 +115,6 @@ CH_INFO_TypeDef DINFO_A =
 
 
 uint8_t Shift = 5;
-uint8_t SweepIndex = 0, ScaleIndex = 0;
-const uint8_t IntrlSweepScaleCoff[4] = { 1, 1, 2, 5 };
-const uint8_t SweepScaleCoff[4] = { 1, 2, 5, 10 };
-uint8_t *SweepScale = (uint8_t*)&SweepScaleCoff[0];
 
 /* переменные режимов интерполяции/отображения/FFT */
 InterpolationMode_TypeDef IntNONE = { InterpolationNONE, Clear_OLD_Data_NONE, 1, -1, "int NONE", 0};
@@ -129,7 +123,7 @@ InterpolationMode_TypeDef IntMIN_MAX = { MIN_MAX_MODEfunc, Clear_OLD_Data_MIN_MA
 InterpolationMode_TypeDef FFT_MODE = { FFT_MODEfunc, Clear_OLD_Data_FFT, 1, 0, " FFT", 3};
 const InterpolationMode_TypeDef *InterpModes[4] = { &IntNONE, &IntLIN, &IntMIN_MAX, &FFT_MODE };
 InterpolationMode_TypeDef *ActiveMode = (InterpolationMode_TypeDef*)&IntNONE;
-
+volatile uint8_t Interpolate_AciveMode_Index = 0;
 
 
 /* Functions ----------------------------------------------------------------*/
@@ -183,10 +177,10 @@ void Set_CH_TypeINFO(Channel_ID_TypeDef NewChannelType)
 *******************************************************************************/
 void Update_Oscillogram(void)
 {
-	uint8_t tmpOscModeState = pnt_gOSC_MODE->State;
+	uint8_t tmpOscModeState = gOSC_MODE.State;
 	CH_INFO_TypeDef *tmpInfo = pINFO;
 
-	pnt_gOSC_MODE->State = STOP;
+	gOSC_MODE.State = STOP;
 	if(ActiveMode == &FFT_MODE)
 	{
 		Clear_OLD_DataCH_ON_SCREEN(CHANNEL_A, leftLimit, rightLimit - 2);
@@ -195,7 +189,7 @@ void Update_Oscillogram(void)
 	INFO_A.Procesing(INFO_A.Mode);
 	INFO_B.Procesing(INFO_B.Mode);
 	
-	pnt_gOSC_MODE->State = tmpOscModeState;
+	gOSC_MODE.State = tmpOscModeState;
 	pINFO = tmpInfo;
 }
 
@@ -209,6 +203,7 @@ void Update_Oscillogram(void)
 void changeInterpolation(InterpolationMode_TypeDef *NewMode)
 {
 	ActiveMode = NewMode;
+	Interpolate_AciveMode_Index = ActiveMode->Indx;
 }
 
 
@@ -255,7 +250,7 @@ static __inline void Data_Reprocessing(void)
 	int cnt, tmp;
 
 	/* Check */
-	if((ActiveMode == &IntMIN_MAX) || (pnt_gOSC_MODE->State == STOP)) return;
+	if((ActiveMode == &IntMIN_MAX) || (gOSC_MODE.State == STOP)) return;
 
 	/* Interpolate */
 	for(cnt = StopPoint; cnt >= (*SweepScale); cnt = cnt - (*SweepScale))
@@ -298,13 +293,13 @@ void Processing_Analog_CH(gChannel_MODE CH_Mode)
 	NVIC_DisableIRQ(ADC1_2_IRQn);
 
 	/* If global state is RUN */
-	if(pnt_gOSC_MODE->State == RUN)
+	if(gOSC_MODE.State == RUN)
 	{
 
 		if( !(INFO_A.Mode.EN == RUN && pINFO == &INFO_B) )
 		{
-			if(Write_SRAM() != COMPLETE) return;
-			Read_SRAM();
+			if(EPM570_SRAM_Write() != COMPLETE) return;
+			EPM570_SRAM_Read();
 		}
 
 		/* Проверяем "зашкал" и переключаем делитель при необходимости */
@@ -327,7 +322,7 @@ void Processing_Analog_CH(gChannel_MODE CH_Mode)
 		ActiveMode->InterpolationMODEfunc(0, rightLimit - leftLimit, (int16_t)pINFO->Position);
 
 		/* автоизмерения */
-		if(pnt_gOSC_MODE->autoMeasurments == ON) mModeActive->MeasurmentsFunc();
+		if(gOSC_MODE.autoMeasurments == ON) mModeActive->MeasurmentsFunc();
 		else if(gShowFFTFreq == TRUE) Calc_Show_Freq();
 	}
 
@@ -343,19 +338,7 @@ void Processing_Analog_CH(gChannel_MODE CH_Mode)
 *******************************************************************************/
 void Processing_Digit_CH(gChannel_MODE CH_Mode)
 {
-//	NVIC_DisableIRQ(ADC1_2_IRQn);
-//
-//	LCD_SetGraphicsColor(Red);
-//	LCD_DrawLine(leftLimit + 1, lowerLimit + 6, trigPosX_cursor.Position, lowerLimit + 6);
-//	LCD_DrawLine(leftLimit + 1, lowerLimit + 7, trigPosX_cursor.Position, lowerLimit + 7);
-//
-//	LCD_DrawLine(trigPosX_cursor.Position, lowerLimit + 6, trigPosX_cursor.Position, lowerLimit + 26);
-//	LCD_DrawLine(trigPosX_cursor.Position + 1, lowerLimit + 6, trigPosX_cursor.Position + 1, lowerLimit + 26);
-//
-//	LCD_DrawLine(trigPosX_cursor.Position, lowerLimit + 26, rightLimit - 1, lowerLimit + 26);
-//	LCD_DrawLine(trigPosX_cursor.Position, lowerLimit + 27, rightLimit - 1, lowerLimit + 27);
-//
-//	NVIC_EnableIRQ(ADC1_2_IRQn);
+
 }
 
 
@@ -376,18 +359,15 @@ void InterpolationNONE(uint16_t X0, uint16_t X1, int16_t Position)
 	LCD_SetGraphicsColor(pINFO->Color);
 	
 	for (cnt_ = X0; cnt_ < X1 - 2; cnt_++)
-	{    		
-//		if(pnt_gOSC_MODE->State == RUN)
-//		{
-			if(Verify_Clip_Point(cnt_ + leftLimit + 1, pINFO->visDATA[cnt_]) != SET)
-			{
-				/* Проверяем на совпадение координат точки очистки с сеткой, если совпало то очищаем цветом сетки */
-				clrColor = Verify_Grid_Match(cnt_ + leftLimit + 1, pINFO->visDATA[cnt_]);
+	{
+		if(Verify_Clip_Point(cnt_ + leftLimit + 1, pINFO->visDATA[cnt_]) != SET)
+		{
+			/* Проверяем на совпадение координат точки очистки с сеткой, если совпало то очищаем цветом сетки */
+			clrColor = Verify_Grid_Match(cnt_ + leftLimit + 1, pINFO->visDATA[cnt_]);
 
-				/* очищаем точку */
-				DrawPixel(cnt_ + leftLimit + 1, pINFO->visDATA[cnt_], clrColor);
-			}
-//		}
+			/* очищаем точку */
+			DrawPixel(cnt_ + leftLimit + 1, pINFO->visDATA[cnt_], clrColor);
+		}
 
 		/* проверка на выход за пределы экрана, обновляем значения двух точек для отображения */
 		if((pINFO->DATA[cnt_] + Position) < lowerLimit + 6) pINFO->visDATA[cnt_] = lowerLimit + 6;
@@ -435,7 +415,7 @@ void InterpolationLINEAR(uint16_t X0, uint16_t X1, int16_t Position)
 		tmpLineY1 = pINFO->visDATA[cnt_ + 1];
 		
 		/* очищаем линию от точки (cnt_ ) до точки (cnt_ + 1) */
-//		if(pnt_gOSC_MODE->State == RUN)
+//		if(gOSC_MODE.State == RUN)
 //		{
 			if(pINFO->OldData_PointsFlag[cnt_] == ENABLE) DrawClear_iLine(tmpLineX0, oldVisData, tmpLineY1, CLEAR);
 			oldVisData = tmpLineY1;
@@ -483,7 +463,7 @@ void MIN_MAX_MODEfunc(uint16_t X0, uint16_t X1, int16_t Position)
 		tmpLineY0 = pINFO->visDATA[cnt_];
 		tmpLineY1 = pINFO->visDATA[cnt_+1];
 		
-//		if(pnt_gOSC_MODE->State == RUN)
+//		if(gOSC_MODE.State == RUN)
 //		{
 			if(pINFO->OldData_PointsFlag[point] == ENABLE) DrawClear_MAXMIN_Line(tmpLineX0, tmpLineY0, tmpLineY1, CLEAR);
 //		}

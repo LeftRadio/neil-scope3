@@ -11,6 +11,7 @@ Comments    :
 /* Includes ------------------------------------------------------------------*/
 #include <math.h>                             /* math library */
 
+#include "defines.h"
 #include "main.h"
 #include "systick.h"
 #include "Settings.h"
@@ -19,7 +20,8 @@ Comments    :
 #include "Measurments.h"
 #include "Processing_and_output.h"
 #include "EPM570.h"
-
+#include "Synchronization.h"
+#include "Sweep.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct /* color mn sctruct */
@@ -44,7 +46,7 @@ char chMessage[50] = {0};
 Message_TypeDef gMessage = {{24, 206, 24, 220}, &chMessage[0], 0xd6bd, 1, 1, FALSE};
 
 btnINFO *btn = 0;	            // Обьявляем указатель, тип данных btnINFO
-btnINFO *saved_btn = 0;         // Обьявляем указатель, тип данных btnINFO
+//btnINFO *saved_btn = 0;         // Обьявляем указатель, тип данных btnINFO
 
 GridType activeAreaGrid = { 205, 120, 389, 200, LightBlack2, ENABLE };
 FlagStatus TrigTimeoutState = RESET;
@@ -69,8 +71,19 @@ uint16_t leftLimit = 10, rightLimit = 399;			// левая/правая гран
 uint16_t upperLimit = 226, lowerLimit = 13;			// вверхняя/нижняя границы вывода
 
 
+const char sweep_text[][10] =
+{
+	{"250ns/Div"}, {"500ns/Div"}, {"1us/Div"}, {"2us/Div"}, {"5us/Div"}, {"10us/Div"}, {"20us/Div"},
+	{"50us/Div"}, {"100us/Div"}, {"200us/Div"}, {"500us/Div"}, {"1ms/Div"}, {"2ms/Div"}, {"5ms/Div"},
+	{"10ms/Div"}, {"20ms/Div"}, {"50ms/Div"}, {"0.1 S/Div"}, {"0.2 S/Div"}, {"0.5 S/Div"}, {"1 S/Div"}
+};
+
+const char sweep_Scale_text[][10] =	{ {"125ns/Div"}, {"50 ns/Div"}, {"25 ns/Div"} };
+const char sweepMODE_text[4][10] = { {"NONE"}, {"NORM"}, {"AUTO"}, {"SING"} };
+
+
 /* Extern variables ---------------------------------------------------------*/
-extern btnINFO btnTIME_SCALE;
+extern btnINFO btnTIME_SCALE, btnLIGHT_INFO, BeepEN;
 extern uint16_t beep_cnt;
 
 
@@ -89,17 +102,30 @@ static __inline char int_to_char(uint8_t val);
 *******************************************************************************/
 void Draw_Logo(void)
 {
+	char txt[20] = "ver  ";
+
 	LCD_FillScreen(Black);	// очищаем экран выбранным цветом 
-	LCD_SetTextColor(Red);	// установить цвет текста
+	LCD_SetTextColor(DarkOrange2);	// установить цвет текста
 	LCD_SetFont(&arialUnicodeMS_16ptFontInfo); // установить шрифт	16
-	LCD_PutStrig(30, 120, 1, "NeilScope 3");
+	LCD_PutStrig(45, 122, 1, "NeilScope 3");
 	
-	LCD_SetTextColor(White);	// установить цвет текста
-	LCD_SetFont(&timesNewRoman12ptFontInfo); // установить шрифт	10
-	LCD_PutStrig(150, 110, 1, "rev 2.9; Left Radio");
-	LCD_PutStrig(150, 95, 1, "full open Hw/Fw project");
+	LCD_SetTextColor(LightGray4);	// установить цвет текста
+	LCD_SetFont(&lucidaConsole10ptFontInfo); // установить шрифт	10
+
+	sprintf(&txt[4], "%d", __FIRMWARE_VERSION__);
+	strcat(txt, " rev ");
+	strcat(txt, __FIRMWARE_REVISION__);
 	
-	delay_ms(1000); delay_ms(1000);
+	LCD_PutStrig(100, 110, 1, txt);
+	LCD_PutStrig(100, 95, 1, "design by: Left Radio, Muha and others.");
+	LCD_PutStrig(100, 80, 1, "full open HW/FW project");
+
+	LCD_SetTextColor(DarkAuqa);
+	LCD_PutStrig(180, 5, 0, "http://hobby-research.at.ua");
+
+	delay_ms(1000);
+	delay_ms(1000);
+	delay_ms(1000);
 }
 
 
@@ -111,27 +137,24 @@ void Draw_Logo(void)
 *******************************************************************************/
 void Draw_Interface(void)
 {
-	Draw_Logo();								// Нарисовать заставку
-	LCD_FillScreen(globalBackColor);			// очищаем экран выбранным цветом
-	LCD_SetGraphicsColor(Active_BackColor);		// цвет графики
+	/* Draw Logo screen */
+	Draw_Logo();
 
-	/* Рисуем закрашенный прямоугольник, основная область вывода осциллограмм */
+	/* Prepare clear all */
+	LCD_FillScreen(globalBackColor);
+
+	/* Oscillogram graphics window */
+	LCD_SetGraphicsColor(Active_BackColor);
 	LCD_DrawFillRect(leftLimit, lowerLimit+5, rightLimit, upperLimit - 5, DRAW, Active_BorderColor);
 	LCD_DrawGrid(&activeAreaGrid, DRAW); // перерисовываем сетку в области осциллограмм
 
-	LCD_SetFont(&lucidaConsole10ptFontInfo);	// установить шрифт
-	
-	SetActiveMenu(&gInterfaceMenu);				// делаем активным основное меню
+	/* Set active and draw main menu */
+	SetActiveMenu(&gInterfaceMenu);
 	Draw_Menu(&gInterfaceMenu);
 
-	Draw_btnTIME_SCALE(0);
-	Draw_CH_Cursors();      // рисуем курсоры
-	Draw_Batt(100, 0);      // рисуем картинку аккумулятора
+	LCD_SetFont(&lucidaConsole10ptFontInfo);
 	
-	LCD_SetTextColor(LightGreen);		// установить цвет текста
-	LCD_PutStrig(320, 223, 1, "FPS:");	// print FPS label
-
-	if(pnt_gOSC_MODE->autoMeasurments == ON) Draw_Menu(&MeasMenu);
+	if(gOSC_MODE.autoMeasurments == ON) Draw_Menu(&MeasMenu);
 
 	if(gShowFFTFreq == TRUE)
 	{
@@ -139,7 +162,15 @@ void Draw_Interface(void)
 		FrequencyMeas_Draw(TRUE);
 	}
 
+	Draw_btnTIME_SCALE(0);
+	Draw_Cursor_Trig(DRAW, LightGray4, Red);
+	DrawTrig_PosX(DRAW, &trigPosX_cursor);
 	Draw_Trigg_Info(TriggShowInfo.Status);
+
+	Draw_CH_Cursors();
+	Draw_Batt(100, 0);
+
+	LCD_PutColorStrig(320, 224, 1, "FPS:", LightGray);	// print FPS label
 }
 
 
@@ -171,11 +202,8 @@ void Change_horizontal_size(uint16_t NEW_rightLimit)
 		
 	LCD_DrawGrid(&activeAreaGrid, DRAW);	// перерисовываем сетку в области осциллограмм
 	
-	/* если включена синхронизация обновляем позицию триггера по Х */
-	if(pnt_gOSC_MODE->oscSync != Sync_NONE)
-	{
-		Trigg_Position_X();
-	}
+	/* Update X trigger position */
+	Trigg_Position_X();
 }
 
 
@@ -200,22 +228,22 @@ void Save_ReDraw_Auto_Meas(SavedState_TypeDef State)
 
 		if(tmpAutoMeas == ON)
 		{
-			pnt_gOSC_MODE->autoMeasurments = ON;
+			gOSC_MODE.autoMeasurments = ON;
 			Draw_Menu(&MeasMenu);
 		}
 		else
 		{
-			pnt_gOSC_MODE->autoMeasurments = OFF;
+			gOSC_MODE.autoMeasurments = OFF;
 		}
 	}
 	else if(State == SAVE)
 	{
-		tmpAutoMeas = pnt_gOSC_MODE->autoMeasurments;
+		tmpAutoMeas = gOSC_MODE.autoMeasurments;
 		tmMode = mModeActive;
 
-		if(pnt_gOSC_MODE->autoMeasurments == ON)
+		if(gOSC_MODE.autoMeasurments == ON)
 		{
-			pnt_gOSC_MODE->autoMeasurments = OFF;
+			gOSC_MODE.autoMeasurments = OFF;
 			Clear_Menu(&MeasMenu);
 		}
 	}
@@ -256,32 +284,33 @@ static void LCD_Draw_SIN(uint16_t X0, uint16_t Y0, uint16_t X1, uint16_t Y1, flo
 *******************************************************************************/
 void btnTIME_SCALE_trigX_Update(DrawState NewState)
 {
-	static uint16_t Old_Position = 0, Old_WindowPosition = 0;
-	float win_widht = (float)btnTIME_SCALE.Width * ((float)gOSC_MODE.WindowWidh / (float)gOSC_MODE.oscNumPoints);
-	float win_pos = ((float)trigPosX_cursor.WindowPosition * win_widht);
+	static uint16_t Old_Position = 2, Old_WindowPosition = 0;
+	float win_widht = (float)btnTIME_SCALE.Width * ((float)gSamplesWin.WindowWidh / (float)gOSC_MODE.oscNumPoints );
+	float win_pos = trigPosX_cursor.WindowPosition * (win_widht / *SweepScale);
 	uint16_t tX = 0;
 
 	if(NewState == CLEAR)
 	{
-		tX = Old_Position;
-		if(tX < win_pos + 1) tX = win_pos + 1;
-		else if(tX > win_pos + win_widht - 1) tX = win_pos + win_widht - 1;
-		tX += btnTIME_SCALE.Left;
+		tX = Old_Position + btnTIME_SCALE.Left;
 
-		if(Old_WindowPosition == trigPosX_cursor.WindowPosition) LCD_SetGraphicsColor(DarkRed);
+		if(Old_WindowPosition == trigPosX_cursor.WindowPosition) LCD_SetGraphicsColor(DarkOrange2);
 		else LCD_SetGraphicsColor(btnTIME_SCALE.Color);
 		LCD_DrawLine(tX, btnTIME_SCALE.Lower + 1, tX, (btnTIME_SCALE.Lower + btnTIME_SCALE.Height) - 1);
 	}
 
 	LCD_Draw_SIN(btnTIME_SCALE.Left + 1, btnTIME_SCALE.Lower + (btnTIME_SCALE.Height/4) + 1, (btnTIME_SCALE.Left + btnTIME_SCALE.Width) - 1,
-						btnTIME_SCALE.Lower + ((btnTIME_SCALE.Height * 3)/4) + 2, 10, LightGreen);
+						btnTIME_SCALE.Lower + ((btnTIME_SCALE.Height * 3)/4) + 2, 10, LightGray4);
 
-	if((gOSC_MODE.oscSync != Sync_NONE) && (NewState == DRAW))
+	if((gSyncState.Mode != Sync_NONE) && (NewState == DRAW))
 	{
-		tX = (uint16_t)(((float)trigPosX_cursor.Position * (float)btnTIME_SCALE.Width) / (float)gOSC_MODE.oscNumPoints);
-		if(tX < (trigPosX_cursor.WindowPosition * win_widht) + 1) tX = (trigPosX_cursor.WindowPosition * win_widht) + 1;
-		else if(tX > (win_widht + (trigPosX_cursor.WindowPosition * win_widht)) - 1) tX = (win_widht + (trigPosX_cursor.WindowPosition * win_widht)) - 1;
+		tX = (uint16_t)(((float)(trigPosX_cursor.Position - leftLimit) * (float)btnTIME_SCALE.Width) / ((float)gOSC_MODE.oscNumPoints * (float)(*SweepScale)));
+
+		if(tX < win_pos + 1) tX = win_pos + 1;
+		else if(tX > win_pos + win_widht - 1) tX = win_pos + win_widht - 1;
+
 		tX += btnTIME_SCALE.Left;
+		if(tX < btnTIME_SCALE.Left + 2) tX = btnTIME_SCALE.Left + 2;
+		else if(tX > (btnTIME_SCALE.Left + btnTIME_SCALE.Width) - 2) tX = (btnTIME_SCALE.Left + btnTIME_SCALE.Width) - 2;
 
 		LCD_SetGraphicsColor(White);
 		LCD_DrawLine(tX, btnTIME_SCALE.Lower + 1, tX, (btnTIME_SCALE.Lower + btnTIME_SCALE.Height) - 1);
@@ -300,19 +329,19 @@ void btnTIME_SCALE_trigX_Update(DrawState NewState)
 *******************************************************************************/
 void Draw_btnTIME_SCALE(uint8_t active)
 {
-//	float win_widht = (pnt_gOSC_MODE->oscSync == Sync_NONE)? (190 * 512) / (float)Get_numPoints() : (190 * 512) / (float)(Get_numPoints() * 2);
-	if((*SweepScale) > 1) return;
-
-	float win_widht = (190.0 * (float)pnt_gOSC_MODE->WindowWidh) / (float)gOSC_MODE.oscNumPoints;
-	float win_pos = ((float)gOSC_MODE.WindowPosition * win_widht) + 1;
-	uint16_t brdColor = (pMNU == TimeScale_Menu)? Orange1 : LightGreen;
-	uint16_t fillColor = DarkRed; //(Get_numPoints() <= pnt_gOSC_MODE->WindowWidh)? LightBlack2 : DarkRed;
+	float win_widht = (190.0 * (float)gSamplesWin.WindowWidh) / ((float)gOSC_MODE.oscNumPoints * (*SweepScale));
+	float win_pos = ((float)gSamplesWin.WindowPosition * win_widht) + 1;
+	uint16_t brdColor = (pMNU == TimeScale_Menu)? LightGray4 : LightBlack2;
+	uint16_t fillColor = DarkOrange2;
 	
 	LCD_SetGraphicsColor(btnTIME_SCALE.Color);
 	LCD_DrawFillRect(btnTIME_SCALE.Left, btnTIME_SCALE.Lower, btnTIME_SCALE.Left + btnTIME_SCALE.Width,
 			btnTIME_SCALE.Lower + btnTIME_SCALE.Height, active, brdColor);
 
+	/* Clip */
 	if(win_widht <= 2) win_widht = 2;
+	else if(win_widht >= 190) win_widht = 189;
+
 	LCD_SetGraphicsColor(fillColor);
 	LCD_DrawFillRect(btnTIME_SCALE.Left + win_pos, btnTIME_SCALE.Lower + 1,
 			btnTIME_SCALE.Left + win_pos + win_widht - 2, (btnTIME_SCALE.Lower + btnTIME_SCALE.Height) - 1, 0, 0);
@@ -328,6 +357,30 @@ void Draw_btnTIME_SCALE(uint8_t active)
 }
 
 
+
+
+/*******************************************************************************
+* Function Name  : Draw_Batt
+* Description    : Draw battarey ico
+* Input          : charge_level, upd
+* Return         : None
+*******************************************************************************/
+static void Draw_Batt_Line(uint16_t X0, uint16_t Y0, uint16_t X1, uint16_t Y1, uint16_t Color, float ColorScale)
+{
+	uint16_t i;
+	float color_brigh;
+
+	for(i = 0; i < (Y1 - Y0); i++)
+	{
+		if(i < (Y1 - Y0) / 2) color_brigh = i;
+		else color_brigh = ((Y1 - Y0) / 2) - i;
+		Color = Color_ChangeBrightness(Color, (int8_t)(color_brigh * ColorScale));
+
+		DrawPixel(X0, Y0 + i, Color);
+	}
+}
+
+
 /*******************************************************************************
 * Function Name  : Draw_Batt
 * Description    : Draw battarey ico
@@ -336,41 +389,49 @@ void Draw_btnTIME_SCALE(uint8_t active)
 *******************************************************************************/
 void Draw_Batt(uint8_t charge_level, uint8_t upd)
 {
-	uint16_t i, j;//, X = 369, Y = upperLimit - 3;
-	uint8_t BattWidth = 27, BattHeight = 10;
+	uint16_t i;
 	uint16_t tmpColor = LCD_GetGraphicsColor();
-	uint16_t ScaleColor, tClolor;
-	uint8_t  RedColorScale;
+	uint16_t lColor;
+	const uint8_t BattWidth = 30;
+	const uint8_t Batt_Y0 = 223, Batt_Y1 = 238;
+	const uint16_t BattRight = 398, BattLeft = (BattRight - BattWidth) - 1;
+	static uint8_t old_charge_level = 0;
 
-	if(charge_level >= 100) charge_level = 25;
-	else charge_level = charge_level / 4;
+	/* Clip and calc charge level */
+	if(charge_level > 100) charge_level = 100;
+	charge_level = (uint8_t)((charge_level * BattWidth) / 100);
 
 	if(upd == 0)
 	{
 		LCD_SetGraphicsColor(White);
-		LCD_DrawRect(399 - BattWidth - 4, upperLimit + 1, 399 - BattWidth, upperLimit + 6);
-		LCD_DrawRect(399 - BattWidth, upperLimit - 3, 399, upperLimit + BattHeight);
+		LCD_DrawRect(BattLeft + 3, Batt_Y0, BattRight, Batt_Y1);			/* Main batt rect draw*/
+		LCD_DrawRect(BattLeft, Batt_Y0 + 4, BattLeft + 3, Batt_Y1 - 4);		/* Plus batt rect draw */
 	}
-	
-	RedColorScale = (uint8_t)(31/charge_level);
-	for(i = 0; i < charge_level; i++)
-	{		
-		for(j = 0; j <= BattHeight + 1; j++)
+
+	/* If charge level more */
+	if(old_charge_level < charge_level)
+	{
+		/* Draw batt charge */
+		for(i = old_charge_level + 1; i < charge_level + 1; i++)
 		{
-			tClolor = M256_Colors[150 + j];
-			ScaleColor = (tClolor - ((((i/2) * RedColorScale)<<5) + (i * RedColorScale))) + ((i * RedColorScale)<<11);
-			DrawPixel(399 - (charge_level - i), j + upperLimit - 2, ScaleColor);
+			lColor = M256_Colors[60 - (uint16_t)((BattWidth - i) * 2)] ;
+			if(i <= 27) Draw_Batt_Line(BattRight - i, Batt_Y0 + 1, BattRight - i, Batt_Y1, lColor, 0.3);
+			else Draw_Batt_Line(BattRight - i, Batt_Y0 + 5, BattRight - i, Batt_Y1 - 4, lColor, 1);
 		}
 	}
-	
-	LCD_SetGraphicsColor(globalBackColor);
-	LCD_DrawLine(399 - BattWidth, upperLimit + 2, 399 - BattWidth, upperLimit + 6);
-	
-	for(i = 399 - (BattWidth - 1); i < 398 - charge_level; i++)
+	/* If charge level less */
+	else if(old_charge_level > charge_level)
 	{
-		LCD_DrawLine(i, upperLimit - 2, i, upperLimit + 10);      	 
+		/* Clear batt charge */
+		LCD_SetGraphicsColor(LightBlack2);		//globalBackColor
+		for(i = charge_level + 1; i < old_charge_level + 1; i++)
+		{
+			if(i <= 27) LCD_DrawLine(BattRight - i, Batt_Y0 + 1, BattRight - i, Batt_Y1);
+			else LCD_DrawLine(BattRight - i, Batt_Y0 + 5, BattRight - i, Batt_Y1 - 4);
+		}
 	}
-	
+
+	old_charge_level = charge_level;
 	LCD_SetGraphicsColor(tmpColor);
 }
 
@@ -384,20 +445,20 @@ void Draw_Batt(uint8_t charge_level, uint8_t upd)
 void UI_ShowFPS(uint8_t FPS_counter)
 {   
     static char FPS_TEXT[3] = {' ', ' ', 0};
-    
+
     /* установить цвет фона, шрифт */
     LCD_SetBackColor(globalBackColor);
     LCD_SetFont(&lucidaConsole10ptFontInfo);
         
     /* очищаем старые показания */
-    LCD_PutColorStrig(349, 223, 0, &FPS_TEXT[0], globalBackColor);
+    LCD_PutColorStrig(349, 224, 0, &FPS_TEXT[0], globalBackColor);
 	
     /* verify limit */
 	if(FPS_counter >= 100) FPS_counter = 99;
 	ConvertToString(FPS_counter, &FPS_TEXT[0], 2);
 
 	/* выводим новые показания */
-    LCD_PutColorStrig(349, 223, 0, &FPS_TEXT[0], White);
+    LCD_PutColorStrig(349, 224, 0, &FPS_TEXT[0], LightGray);
     
     /* сбрасываем флаг */
     show_FPS_flag = 0;
@@ -415,14 +476,19 @@ void UI_SamplingSetTimeout(uint16_t TextColor)
     static char txt_OLD = 'T';
     char *txtTimeout = "T";
 
+    TrigTimeoutState = SET;
+
 	LCD_SetBackColor(Active_BackColor);			// set text color to globalBackColor
 	LCD_SetFont(&lucidaConsole10ptFontInfo);	// set font
 
-	/* выводим */
-	if(pnt_gOSC_MODE->oscSync == Sync_NONE)
+	if(txt_OLD != *txtTimeout) UI_SamplingClearTimeout();
+	txt_OLD = *txtTimeout;
+
+	/*  */
+	if(gSyncState.Mode == Sync_NONE)
 	{
-		LCD_SetTextColor(Blue);
-		LCD_SetGraphicsColor(Gray);
+		LCD_SetTextColor(TextColor);
+		LCD_SetGraphicsColor(GrayBlue);
 		txtTimeout = "S";
 	}
 	else
@@ -432,13 +498,8 @@ void UI_SamplingSetTimeout(uint16_t TextColor)
 		LCD_SetGraphicsColor(Red);
 	}
 
-	if(txt_OLD != *txtTimeout) UI_SamplingClearTimeout();
-
 	LCD_DrawFillRect(304, 225, 314, 235, 0, 0);
 	LCD_PutStrig(306, 223, 1, txtTimeout);
-
-	txt_OLD = *txtTimeout;
-	TrigTimeoutState = SET;
 }
 
 
@@ -496,10 +557,12 @@ void Draw_Cursor_Trig(DrawState NewState, uint16_t ClearColor, uint16_t TextColo
 	uint8_t tmpNewState = NewState;
 	uint16_t textColor1, textColor2;
 
+	if((gSyncState.Mode == Sync_NONE) && (NewState == DRAW)) return;
+
 	LCD_SetFont(&lucidaConsole_9pt_Bold_FontInfo);
 	LCD_SetTextColor(globalBackColor);
 
-	if(pnt_gOSC_MODE->AnalogSyncType > 1)
+	if(gSyncState.Type > 1)
 	{
 		if(NewState == DRAW)
 		{
@@ -540,6 +603,7 @@ void Draw_Cursor_Trig(DrawState NewState, uint16_t ClearColor, uint16_t TextColo
 			leftLimit, pntTrigCursor->Position + 1, pntTrigCursor->Color);
 
 	Draw_Cursor_Trig_Line(NewState, pntTrigCursor);
+
 	LCD_SetTextColor(textColor1);
 	LCD_PutStrig(0, pntTrigCursor->Position - 2, 1, pntTrigCursor->Name);		/* очищаем старые показания */
 
@@ -613,14 +677,12 @@ void Draw_Cursor_Trig_Line(DrawState NewState, TrigCursorINFO *TrigCursor)
 void DrawTrig_PosX(DrawState NewState, TrigCursorINFO *TrigCursor)
 {
 	uint16_t cnt_, clrColor;
-	uint32_t StartWindowX = pnt_gOSC_MODE->WindowPosition * 389;
+	uint32_t StartWindowX = gSamplesWin.WindowPosition * 389;
 	uint32_t WindowX0 = StartWindowX + leftLimit + 10;
 	uint32_t WindowX1 = StartWindowX + rightLimit - 10;
 	uint16_t X;
 
-	if(pnt_gOSC_MODE->oscSync == Sync_NONE) NewState = CLEAR;
-
-	if(trigPosX_cursor.WindowPosition == pnt_gOSC_MODE->WindowPosition)
+	if(trigPosX_cursor.WindowPosition == gSamplesWin.WindowPosition)
 	{
 		if(TrigCursor->Position < WindowX0) TrigCursor->Position = WindowX0;
 		else if(TrigCursor->Position > WindowX1) TrigCursor->Position = WindowX1;
@@ -629,7 +691,8 @@ void DrawTrig_PosX(DrawState NewState, TrigCursorINFO *TrigCursor)
 	}
 	else return;
 
-	if(NewState == CLEAR)  // если очистка
+	/* If clear state or synchronization OFF */
+	if((NewState == CLEAR) || (gSyncState.Mode == Sync_NONE))
 	{ 
 		/* Очищаем указатель */
 		LCD_SetGraphicsColor(Active_BackColor);      
@@ -662,9 +725,11 @@ void DrawTrig_PosX(DrawState NewState, TrigCursorINFO *TrigCursor)
 				DrawPixel(X, cnt_, trigPosX_cursor.Color);
 			}
 		}
+
 		trigPosX_cursor.Drawed = TRUE;
 	}
 }
+
 
 
 /*******************************************************************************
@@ -746,23 +811,21 @@ void Draw_Cursor_Meas_Line(uint16_t cursor, DrawState NewState)
 *******************************************************************************/
 void UpdateAllCursors(void)
 {
-	if(pnt_gOSC_MODE->oscSync != Sync_NONE)
+	if(gSyncState.Mode != Sync_NONE)
 	{
-		Draw_Cursor_Trig_Line(DRAW, &Height_Y_cursor);
-
-		if((pnt_gOSC_MODE->AnalogSyncType == Sync_IN_WIN) || (pnt_gOSC_MODE->AnalogSyncType == Sync_OUT_WIN))
+		if(gSyncState.Sourse != CHANNEL_DIGIT)
 		{
-			Draw_Cursor_Trig_Line(DRAW, &Low_Y_cursor);
+			Draw_Cursor_Trig_Line(DRAW, &Height_Y_cursor);
+			if(gSyncState.Type > Sync_Fall) Draw_Cursor_Trig_Line(DRAW, &Low_Y_cursor);
 		}
-
 		DrawTrig_PosX(DRAW, &trigPosX_cursor);
 	}
-  
-   if(pnt_gOSC_MODE->autoMeasurments == ON)
-   {
-      Draw_Cursor_Meas_Line(measCursor1, DRAW);
-      Draw_Cursor_Meas_Line(measCursor2, DRAW);
-   }
+
+	if(gOSC_MODE.autoMeasurments == ON)
+	{
+		Draw_Cursor_Meas_Line(measCursor1, DRAW);
+		Draw_Cursor_Meas_Line(measCursor2, DRAW);
+	}
 }
 
 
@@ -831,34 +894,14 @@ void setActiveButton(btnINFO *selectBtn)
 }
 
 
-/*******************************************************************************
-* Function Name  : saveActiveButton
-* Description    : Функция сохранения активной кнопки меню
-* Input          : btnINFO *selectBtn
-* Output         : None
-* Return         : None
-*******************************************************************************/
-void saveActiveButton(btnINFO *selectBtn)
-{
-	saved_btn = selectBtn;
-}
-
-
-/*******************************************************************************
-* Function Name  : Draw_Quick_Menu_Buttons
-* Description    : Функция включения/выключения меню
-* Input          : DRAW/CLEAR - нарисовать/очистить
-* Return         : None
-*******************************************************************************/
+/**
+  * @brief  Draw_Menu
+  * @param  Menu pointer for draw
+  * @retval None
+  */
 void Draw_Menu(Menu_Struct_TypeDef *Menu)
 {
 	uint8_t i;
-
-	/* если отрисовываемое меню активно тогда сохраняем активную кнопку меню из которого переходим */
-	if((Menu != &gInterfaceMenu) && (Menu == pMenu)){ saveActiveButton(btn); LCD_DrawButton(btn, NO_activeButton); }
-
-	/* если коллбэк функция меню не равна 0, то выполняем ее */
-	if(Menu->MenuCallBack != (void*)0) Menu->MenuCallBack(DRAW);
 
 	/* если для меню нужно установить ограничение по отрисовке */
 	if(Menu->Clip == ENABLE)
@@ -869,6 +912,9 @@ void Draw_Menu(Menu_Struct_TypeDef *Menu)
 		Update_Oscillogram();	/* обновлем осциллограммы, для того что бы они "обрезались" по размерам отсечения */
 	}
 
+	/* If not (void*)0 */
+	if(Menu->MenuCallBack != (void*)0) Menu->MenuCallBack(DRAW);
+
 	/* отрисовываем кнопки */
 	for(i = 0; i <= Menu->MaxButton; i++)
 	{
@@ -877,7 +923,7 @@ void Draw_Menu(Menu_Struct_TypeDef *Menu)
 
 	if(Menu == pMenu)	// если отрисовываемое меню активно тогда отрисовываем активной стартовую кнопку
 	{
-		setActiveButton(Menu->Buttons[Menu->StartButton]);
+		setActiveButton(Menu->Buttons[Menu->Indx]);
 		LCD_DrawButton(btn, activeButton);
 	}
 }
@@ -908,23 +954,16 @@ void ReDraw_Menu(Menu_Struct_TypeDef *ReDrawMenu, btnINFO *ActiveButton)
 *******************************************************************************/
 void Clear_Menu(Menu_Struct_TypeDef *Menu)
 {
-	/* Очищаем */
+	/* Clear menu clip object and other */
 	if(Menu->Clip == ENABLE)
 	{
 		LCD_ClearArea(Menu->Coord[0], Menu->Coord[1], Menu->Coord[2], Menu->Coord[3], Active_BackColor);
-		Clear_ClipObject(Menu->ClipObjIndx);	// убираем ограничения для отрисовки
-		LCD_DrawGrid(&activeAreaGrid, DRAW);	// перерисовываем сетку в области осциллограмм
-		Update_Oscillogram();					// обновлем осциллограммы
+		Clear_ClipObject(Menu->ClipObjIndx);
+		LCD_DrawGrid(&activeAreaGrid, DRAW);
+		Update_Oscillogram();
 	}
 
 	if(Menu->MenuCallBack != (void*)0) Menu->MenuCallBack(CLEAR);
-
-	if((Menu != &gInterfaceMenu) && (Menu == pMenu))
-	{
-		setActiveButton(saved_btn);				/* восстанавливаем сохраненную активную кнопку */
-		LCD_DrawButton(btn, activeButton);
-	}
-
 }
 
 
@@ -937,34 +976,33 @@ void Clear_Menu(Menu_Struct_TypeDef *Menu)
 *******************************************************************************/
 void Change_Menu_Indx(void)
 {
-	//tmp_MenuIndex = pMenu->MenuMaxButton;
-
 	/* Если были нажаты кнопки вверх или вниз то изменяем положения указателя меню */
-	if(ButtonsCode == pMenu->ChangeIndButton_UP)pMenu->Indx++;       // нажата кнопка DOWN
-	else if(ButtonsCode == pMenu->ChangeIndButton_DOWN)pMenu->Indx--;    // нажата кнопка UP
+	if(ButtonsCode == pMenu->ChangeIndButton_UP)pMenu->Indx++;
+	else if(ButtonsCode == pMenu->ChangeIndButton_DOWN)pMenu->Indx--;
 
 	/* проверка и выход если нажата кнопка вниз на самом нижнем положении указателя */
 	if(pMenu->Indx == 255) pMenu->Indx = pMenu->MaxButton;
 	else if(pMenu->Indx > pMenu->MaxButton)
 	{
-		pMenu->Indx = pMenu->StartButton;		// индекс меню на начальную позицию
-		if(pMenu != &gInterfaceMenu)
-		{
-			if(pMenu == &MeasMenu)
-			{
-				LCD_DrawButton(btn, NO_activeButton);		// перерисовываем текущую кнопку как неактивную
-				setActiveButton(gInterfaceMenu.Buttons[6]);	// сделать активной кнопку по индексу
-				LCD_DrawButton(btn, activeButton);
-			}
-			else if(pMenu == &DigitTrigMenu) return;
-			else Clear_Menu(pMenu);	// Очищаем меню
+		pMenu->Indx = pMenu->StartButton;
 
-			SetActiveMenu(&gInterfaceMenu);		// делаем активным основное меню
+		if(pMenu->MaxIndexState != M_SKIP)
+		{
+			if(pMenu->MaxIndexState == M_CLEAR) Clear_Menu(pMenu);
+			else if(pMenu->MaxIndexState == M_NTH)
+			{
+				LCD_DrawButton(btn, NO_activeButton);
+			}
+
+			SetActiveMenu(&gInterfaceMenu);
+			setActiveButton(pMenu->Buttons[pMenu->Indx]);
+			LCD_DrawButton(btn, activeButton);
+
 			return;
 		}
 	}
 
-	/* если положения указателя изменилось, то */
+	/* Index is changed */
 	if(tmp_MenuIndex != pMenu->Indx)
 	{
 		if(ColorMn.State == DRAW) Clear_COLOR_Mn();
@@ -975,7 +1013,7 @@ void Change_Menu_Indx(void)
 		tmp_MenuIndex = pMenu->Indx;					// сохраним текущий индекс
 	}
 
-	if(BeepState != DISABLE) Beep_Start();
+	if(gOSC_MODE.BeepState != DISABLE) Beep_Start();
 	btn->btnEvent_func();								// вызвать соответсвующую функцию обработчик
 	if(btn == &btnTIME_SCALE) Draw_btnTIME_SCALE(activeButton);
 	else LCD_DrawButton(btn, activeButton);					// и перерисовать кнопку
@@ -1122,19 +1160,19 @@ void Change_COLOR_Mn_Position(uint16_t Position, uint16_t *OutColor)
 *******************************************************************************/
 void FrequencyMeas_Draw(Boolean NewState)
 {
-	uint16_t X0 = rightLimit - 60, Y0 = upperLimit - 33;
+	uint16_t X0 = rightLimit - 61, Y0 = upperLimit - 33;
 	uint16_t X1 = rightLimit - 1, Y1 = upperLimit - 6;
 
-	if(pnt_gOSC_MODE->autoMeasurments != OFF) return;
+	if(gOSC_MODE.autoMeasurments != OFF) return;
 
 	if((NewState == TRUE) && (ActiveMode != &IntMIN_MAX))
 	{
 		/* устанавливаем ограничения для отрисовки */
-		if(Set_New_ClipObject(X0, Y0, X1, Y1, IN_OBJECT, ShowFreq_ClipObj) != ERROR)
+		if(Set_New_ClipObject(X0 - 1, Y0, X1, Y1 + 1, IN_OBJECT, ShowFreq_ClipObj) != ERROR)
 		{
 			Update_Oscillogram();	// обновлем осциллограммы, для того что бы они "обрезались" по размерам отсечения
 			Reset_Calc_Show_Freq();
-			LCD_SetGraphicsColor(LightBlack2);
+			LCD_SetGraphicsColor(StillBlue);
 			LCD_DrawFillRect(X0, Y0, X1, Y1, 0, 0);
 		}
 	}
@@ -1177,6 +1215,64 @@ void FrequencyMeas_SaveRestore_State(uint8_t Save, Boolean *SaveRestoreStatus)
 }
 
 
+/**
+  * @brief  BackLightPowerState_UpdateButton
+  * @param  None
+  * @retval None
+  */
+void UI_BackLightPowerState_UpdateButton(void)
+{
+	if(gOSC_MODE.PowerSave == PWR_S_ENABLE)
+	{
+		if(gOSC_MODE.BackLight == BCKL_MIN) btnLIGHT_INFO.Text = "PwSave 0";
+		else btnLIGHT_INFO.Text = "PwSave 1";
+	}
+	else
+	{
+		if(gOSC_MODE.BackLight == BCKL_MIN) btnLIGHT_INFO.Text = "BL MIN";
+		else btnLIGHT_INFO.Text = "BL MAX";
+	}
+}
+
+
+/**
+  * @brief  BackLightPowerState_UpdateButton
+  * @param  None
+  * @retval None
+  */
+void UI_LoadPreferenceUpdate(void)
+{
+	/* Set channels colors */
+	INFO_A.Color = Color_ChangeBrightness(M256_Colors[indxColorA*2], 2);;
+	INFO_B.Color = Color_ChangeBrightness(M256_Colors[indxColorB*2], 2);;
+
+	/* Set interface buttons colors */
+	mSet_AllButtons_Color(M256_Colors[indxColorButtons*2]);
+
+	/* Set channels buttons colors */
+	gInterfaceMenu.Buttons[1]->Color = Color_ChangeBrightness(M256_Colors[indxColorA*2], -24);
+	gInterfaceMenu.Buttons[8]->Color = Color_ChangeBrightness(M256_Colors[indxColorA*2], -24);
+	gInterfaceMenu.Buttons[2]->Color = Color_ChangeBrightness(M256_Colors[indxColorB*2], -24);
+	gInterfaceMenu.Buttons[9]->Color = Color_ChangeBrightness(M256_Colors[indxColorB*2], -24);
+
+	/* Set channels fonts colors */
+	gInterfaceMenu.Buttons[1]->Active_FontColor = grayScalle[indxTextColorA*2];
+	gInterfaceMenu.Buttons[8]->Active_FontColor = grayScalle[indxTextColorA*2];
+	gInterfaceMenu.Buttons[2]->Active_FontColor = grayScalle[indxTextColorB*2];
+	gInterfaceMenu.Buttons[9]->Active_FontColor = grayScalle[indxTextColorB*2];
+
+	/* Set Grid color */
+	activeAreaGrid.Color = grayScalle[indxColorGrid*2];
+
+	/* btnSWEEP button text */
+	if(ScaleIndex > 0) gInterfaceMenu.Buttons[3]->Text = (char *)&sweep_Scale_text[ScaleIndex - 1];
+	else gInterfaceMenu.Buttons[3]->Text = (char *)&sweep_text[SweepIndex];
+
+	/* PowerSave state, BL and beep */
+	UI_BackLightPowerState_UpdateButton();
+	if(gOSC_MODE.BeepState == ENABLE) BeepEN.Text = "Beep ON";
+	else BeepEN.Text = "Beep OFF";
+}
 
 
 /*******************************************************************************
@@ -1261,31 +1357,6 @@ void Show_Message(char *Text)
 }
 
 
-
-///*******************************************************************************
-//* Function Name  : Update_DHT_Sensor_OnScreen
-//* Description    :
-//* Input          : None
-//* Return         : None
-//*******************************************************************************/
-//void ConvertToString(uint32_t Num, char* Str, uint8_t NumSymbol)
-//{
-//	uint8_t A[6] = { 0 };
-//	int8_t i;
-//
-//	while(Num >= 100000){ Num = Num - 100000; A[5]++; }
-//	while(Num >= 10000){ Num = Num - 10000; A[4]++; }
-//	while(Num >= 1000){ Num = Num - 1000; A[3]++; }
-//	while(Num >= 100){ Num = Num - 100;	A[2]++; }
-//	while(Num >= 10){ Num = Num - 10; A[1]++; }
-//	while(Num >= 1){ Num = Num - 1; A[0]++; }
-//
-//	for(i = NumSymbol - 1; i >= 0; i--)
-//	{
-//		(*Str) = A[i] + 48;
-//		Str++;
-//	}
-//}
 
 /*******************************************************************************
 * Function Name  : ConvertToString

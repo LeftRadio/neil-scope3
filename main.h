@@ -1,12 +1,12 @@
-﻿/*************************************************************************************
-*
-Description :  NeilScope3 Main header
-Version     :  1.0.1
-Date        :  7.12.2011
-Author      :  Left Radio                          
-Comments:  
-*
-**************************************************************************************/
+﻿/**
+  ******************************************************************************
+  * @file	 	main.h
+  * @author  	Neil Lab :: Left Radio
+  * @version 	v2.5.0
+  * @date
+  * @brief		header
+  ******************************************************************************
+**/
 
 #ifndef __MAIN_H
 #define __MAIN_H 
@@ -20,44 +20,57 @@ Comments:
 #define ON	    			1
 #define OFF					0
 
-#define Sync_Condition 		0
-#define Sync_Different 		1
-#define Sync_C_or_D	 		2
-#define Sync_C_and_D 		3
-#define oscSyncMode_MAX		3
+//#define Sync_Condition 		0
+//#define Sync_Different 		1
+//#define Sync_C_or_D	 		2
+//#define Sync_C_and_D 		3
+//#define oscSyncMode_MAX		3
 
 #define ON_OFF_button	(GPIOC->IDR & GPIO_Pin_14)
 
 /* Exported typedef -----------------------------------------------------------*/
 
-/* ---------------------------------------- Описание вспомогательных структур ---------------------------------------- */
+/* Work mode for device */
+typedef enum { OSC_MODE = (uint8_t)0, LA_MODE = (uint8_t)1} OSC_LA_Mode_Typedef;
+typedef enum { STOP = 0, RUN = 1, COMPLETE = 2 } State_TypeDef;
 
-/* обозначения кнопок пользователя */
+/* Buttons */
 typedef enum { LEFT = 0x1E, RIGHT = 0x1D, UP = 0x17, DOWN = 0x1B, OK = 0x0F, NO_Push = 0x1F } ButtonsCode_TypeDef;
 typedef enum { SHORT_SET = 0x01, LONG_SET = 0x02, B_RESET = 0xFF } ButtonsPush_TypeDef;
 
-/* ID и состояния для каналов */
-typedef enum {CHANNEL_A = (uint8_t)0, CHANNEL_B = (uint8_t)1, CHANNEL_DIGIT = (uint8_t)2, BOTH_CHANNEL = (uint8_t)3} Channel_ID_TypeDef;
-typedef enum {NONE = (int8_t)0, RUN_AC = (int8_t)1, RUN_DC = (int8_t)2 } Channel_AC_DC_TypeDef;
+/* Channels ID */
+typedef enum {
+	CHANNEL_A = (uint8_t)0,
+	CHANNEL_B = (uint8_t)1,
+	CHANNEL_DIGIT = (uint8_t)2,
+	BOTH_CHANNEL = (uint8_t)3
+} Channel_ID_TypeDef;
 
-/* виды синхронизации, типы синхронизации по аналоговым и цифровому каналам */
+/* ADC input AC/DC state */
+typedef enum { NONE = (int8_t)0, RUN_AC = (int8_t)1, RUN_DC = (int8_t)2 } Channel_AC_DC_TypeDef;
+
+/* Synchronization work mode, type */
 typedef enum {Sync_NONE = (int8_t)0, Sync_NORM = (int8_t)1, Sync_AUTO = (int8_t)2, Sync_SINGL = (int8_t)3 } SyncMode_TypeDef;
-typedef enum {Sync_Rise = (int8_t)0, Sync_Fall = (int8_t)1, Sync_IN_WIN = (int8_t)2, Sync_OUT_WIN = (int8_t)3 } SyncAType_TypeDef;
+typedef enum {
+	Sync_Rise = (int8_t)0, Sync_Fall = (int8_t)1,
+	Sync_IN_WIN = (int8_t)2, Sync_OUT_WIN = (int8_t)3,
+	Sync_LA_State = (int8_t)4, Sync_LA_Different = (int8_t)5,
+	Sync_LA_State_AND_Different = (int8_t)6, Sync_LA_State_OR_Different = (int8_t)7
+} SyncAType_TypeDef;
 
-/* структура для таймера автоотключения прибора */
+/* Auto OFF device timer */
 typedef struct { uint32_t ResetTime; int8_t Work_Minutes; uint8_t Vbatt; FunctionalState State; } OFF_Struct_TypeDef;	// Auto off struct
 
-/* Общая структура состояния, используетя при запуске останове работы осцилографа и т.п. */
-typedef enum { STOP = 0, RUN = 1, COMPLETE = 2 } State_TypeDef;
+/* BackLight and power state */
+typedef enum { BCKL_MIN = 0, BCKL_MAX = 1 } BcklightState_Typedef;
+typedef enum { PWR_S_DISABLE = 0, PWR_S_ENABLE = 1} PwrSaveState_Typedef;
 
 
-/* ---------------------------------------- Описание структур каналов ---------------------------------------- */
-
-/* Структурный тип данных режим работы каналов */
-typedef struct
-{
-	Channel_ID_TypeDef		ID;  			// индификатор канала
-	State_TypeDef			EN;     		// состояние - включен/выключен
+/* ---------------------------------------- Channels structs ---------------------------------------- */
+/* ADC Channels mode struct */
+typedef struct {
+	Channel_ID_TypeDef		ID;  			// Id for channel
+	State_TypeDef			EN;     		// ENABLE/DISABLE state
 	Channel_AC_DC_TypeDef	AC_DC;			// 1 - AC, 2 - DC
 } gChannel_MODE;
 
@@ -68,14 +81,11 @@ typedef struct
 	uint8_t Div;									// положение аналогового делителя
 	uint16_t Zero_PWM_values[12];					// массив значений ШИМ для каждого положения аналогового делителя
 	volatile uint16_t *corrZ;
-//	volatile uint8_t fft_Mag[256];
 } ACH_INFO;
 
 /* Структурный тип данных цифрового канала для логического анализатора */
 typedef struct
 {
-
-
 } DCH_INFO;
 
 
@@ -103,48 +113,54 @@ typedef struct
 } CH_INFO_TypeDef;
 
 
-/* ---------------------------------------- Описание общих структур и переменных ---------------------------------------- */
-
-/* Структурный тип данных общего режима работы осциллографа */
+/* Global device work mode/state struct  */
 typedef struct
 {
-	uint32_t oscNumPoints;          	// Количество точек для записи в память
-	uint16_t WindowWidh;
-	int16_t WindowPosition;
-	uint32_t oscSweep;		        	// длительность развертки
-	Boolean Interleave;
-	SyncMode_TypeDef  oscSync;			// Cинхронизация, 0 - нет, 1 - ждущая, 2 - авто, 3 - однократная
-	Channel_ID_TypeDef  SyncSourse;		// Синхронизация по каналу А, B, цифра
-	SyncAType_TypeDef  AnalogSyncType;	// Режим синхронизации, по фронту 1, по спаду 2, вход/выход из окна - по входу 3, по выходу 4
-	Boolean  oscPreHistory;	        	// Предыстория, TRUE/FALSE
-	Boolean  autoMeasurments;	    	// Автоизмерения,  TRUE/FALSE
-	State_TypeDef  State;     			// Режим работы STOP/RUN, STOP - 0, RUN - 1
+	uint32_t oscNumPoints;
 
-	OFF_Struct_TypeDef OFF_Struct;
+	OSC_LA_Mode_Typedef Mode;
+	Boolean Interleave;
+	Boolean  autoMeasurments;
+	PwrSaveState_Typedef PowerSave;
+	BcklightState_Typedef BackLight;
+	FunctionalState BeepState;
+	State_TypeDef  State;
 
 } OscMode_TypeDef;
 
 
+/* Samples window struct */
+typedef struct {
+
+	uint16_t WindowWidh;
+	int16_t WindowPosition;
+	uint16_t WindowsNum;
+	uint32_t Sweep;
+
+} SamplesWin_Typedef;
+
+
 /* Exported variables --------------------------------------------------------*/
-extern CH_INFO_TypeDef *pINFO, INFO_A, INFO_B, DINFO_A;		// указатель и переменные каналов
-extern OscMode_TypeDef  gOSC_MODE;
-extern volatile OscMode_TypeDef  *pnt_gOSC_MODE;	        // указатель на переменную общего режима работы осциллографа
+extern CH_INFO_TypeDef *pINFO, INFO_A, INFO_B, DINFO_A;
+extern __IO OscMode_TypeDef  gOSC_MODE;
+extern __IO SamplesWin_Typedef gSamplesWin;
+extern OFF_Struct_TypeDef AutoOff_Timer;
 
 extern FlagStatus show_FPS_flag;
-extern uint8_t FPS_counter;					// переменные для подсчета количества выводимых кадров за сек
+extern uint8_t FPS_counter;
 
 extern int8_t ADC_VbattPrecent;
 extern FlagStatus show_ADC_flag;
 extern FlagStatus MessageEvent;
 
 extern FlagStatus ButtonEnable;
-extern ButtonsCode_TypeDef ButtonsCode;	  	// кнопоки
-extern ButtonsPush_TypeDef ButtonPush;     	// флаг нажатия на кнопку
-extern uint8_t speed_up_cnt;      			//
+extern ButtonsCode_TypeDef ButtonsCode;
+extern ButtonsPush_TypeDef ButtonPush;
+extern uint8_t speed_up_cnt;
 
 
 /* Exported function --------------------------------------------------------*/
-extern void (*pMNU)(void);	 /* указатель на текущую функцию меню */
+extern void (*pMNU)(void);	 /* Pointer to actived menu func */
 
 
 

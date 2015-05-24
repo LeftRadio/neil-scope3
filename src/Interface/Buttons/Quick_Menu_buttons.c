@@ -17,6 +17,16 @@ Comments    :
 #define LowerBtn 		22
 #define UpLineBtn		((LowerBtn - 4) + ((btnHight + btnSW) * (qMnuButtonsMAX + 1)))
 
+void Change_Color_Buttons(void);
+void Change_Color_Grid(void);
+void Change_Color_Back(void);
+void BackLight(void);
+void Save_pref(void);
+void Beep_ON_OFF(void);
+void Perform_Erase_EEPROM(void);
+void ShowFFT_Freq(void);
+void Change_Interpolation(void);
+void Auto_Power_OFF(void);
 
 /* ------------------------------------------- */
 //btnINFO Bootloader =
@@ -140,7 +150,7 @@ btnINFO btnLIGHT_INFO =
 	btn_ForeColor,							// Цвет фона
 	btn_activeForeColor,					// Цвет фона когда кнопка активна
 	btn_FontColor,							// Цвет шрифта когда кнопка активна
-	"B.L. MAX",								// Текст
+	"BL MIN",								// Текст
 	BackLight 								// указатель на функцию обработчик
 };
 

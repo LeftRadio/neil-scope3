@@ -16,6 +16,7 @@
 #include "Settings.h"
 #include "User_Interface.h"
 #include "EPM570.h"
+#include "Synchronization.h"
 #include "Processing_and_output.h"
 #include "Host.h"
 #include "IQueue.h"
@@ -32,32 +33,34 @@ uint8_t FPS_counter = 0;
 float temp = 0;
 uint8_t t_WorkMinutes = 0;
 
-/* инициализация переменной общего режима работы осциллографа */
-OscMode_TypeDef gOSC_MODE =
+/* Global work mode for device */
+__IO OscMode_TypeDef gOSC_MODE =
 {
-	388,			// Количество точек для записи в память
-	388,
-	0,
-	0,				// коэффициент развертки
-	FALSE,			// Interleave
-	Sync_NONE,		// Режим синхронизации, 0 - нет, 1 авто, 2 - однократная
-	CHANNEL_A,		// Синхронизация по каналу А когда 0 и B когда 1
-	0,				// Синхронизация, по уровню; по фронту 0, по спаду 1, вход/выход из окна - по входу - 2, по выходу 3
-	OFF,			// Предыстория, вкл. 1, выкл. 0
-	OFF,			// Автоизмерени, вкл. 1, выкл. 0
-	RUN,			// Режим работы RUN/HOLD, HOLD - 0, RUN - 1
+	388,				// Number points to write SRAM
+	OSC_MODE,			// Oscilloscope or LogicAnalyzer work mode state
+	FALSE,				// Interleave mode state
+	OFF,				// Automeasurments state
+	PWR_S_DISABLE,		// Power save mode state
+	BCKL_MAX,
+	TRUE,				// Beeper state
+	RUN					// Work state
+};
 
-	/* OFF timer */
-	{
+/*  */
+__IO SamplesWin_Typedef gSamplesWin = {
+		388,			// Sample 1 window width
+		0,				// Active window position
+		1,				// Windows number in gOSC_MODE.NumPoints
+		0,				// Horizontal scale coefficient
+};
+
+/* Timer for auto OFF power when Vbatt is less the 3.45V, or manual OFF timeout */
+OFF_Struct_TypeDef AutoOff_Timer = {
 		0,			// Reset(start counting) time
 		0,			// OFF time
 		0,			// Batt low voltage flag
 		DISABLE,	// Auto OFF State
-	}
 };
-
-/* указатель, тип OSC_MODE_type */
-volatile OscMode_TypeDef  *pnt_gOSC_MODE = &gOSC_MODE;
 
 #ifdef __MAIN_C_HOST_DEBUG__
 	char DBG_CMD[5] = { 0 };
@@ -74,7 +77,7 @@ volatile OscMode_TypeDef  *pnt_gOSC_MODE = &gOSC_MODE;
 #endif
 
 extern btnINFO btnRUN_HOLD;
-extern __IO uint8_t IN_HostData[CMD_MAX_SIZE];
+extern volatile uint8_t IN_HostData[CMD_MAX_SIZE];
 
 /* Extern function -----------------------------------------------------------*/
 extern FlagStatus ADC_Ready(void);
@@ -84,12 +87,12 @@ void (*pMNU)(void) = Change_Menu_Indx;     /* указатель на функц
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private Functions --------------------------------------------------------*/
-/*******************************************************************************
-* Function Name  : Main Function
-* Description    : 
-* Input          : None
-* Return         : None
-*******************************************************************************/
+
+/**
+ * @brief  main cycle
+ * @param  None
+ * @retval None
+ */
 int main(void)
 {
 	__disable_irq();
@@ -105,6 +108,11 @@ int main(void)
 	/* Main work */
 	while(1)
 	{
+
+#ifndef __SWD_DEBUG__
+		if(gOSC_MODE.PowerSave == PWR_S_ENABLE)	__WFI();
+#endif
+
 		if(Host_IQueue_Get_CommandsCount() > 0)
 		{
 			if(Host_IQueue_GetReadStatus((uint8_t*)&IQueue_WorkIndex) == TRUE)
@@ -139,16 +147,16 @@ int main(void)
 		}
 
 
-		if(HostMode != ENABLE)	// Автономная работа
+		if(HostMode != ENABLE)
 		{
-			UpdateAllCursors();						// обновлем курсоры
+			UpdateAllCursors();
 
 			/* Накапливаем, обрабатываем и выводим данные осциллограмм */
 			INFO_A.Procesing(INFO_A.Mode);
 			INFO_B.Procesing(INFO_B.Mode);
 
 			/* Если режим однократной развертки то останавливаемся до перезапуска */
-			if((pnt_gOSC_MODE->oscSync == Sync_SINGL) && (pnt_gOSC_MODE->State == RUN) && (SRAM_GetWriteState() == COMPLETE))
+			if((gSyncState.Mode == Sync_SINGL) && (gOSC_MODE.State == RUN) && (EPM570_SRAM_GetWriteState() == COMPLETE))
 			{
 				setCondition(STOP);
 			}
@@ -156,7 +164,8 @@ int main(void)
 			/* если были нажаты какие либо кнопки, то переходим в функцию
 		 	   на которую сейчас указывает void (*pMNU)(void).
 			--- Опрос кнопок происходит через чтение регистра ПЛИС по прерыванию таймера TIM2 --- */
-			if(ButtonPush != B_RESET){ pMNU();	ButtonPush = B_RESET; ButtonsCode = NO_Push; }
+			if(ButtonPush != B_RESET){ pMNU(); ButtonPush = B_RESET; ButtonsCode = NO_Push; }
+
 
 			/* подсчет и отображение кадров/сек. */
 			if(show_FPS_flag == SET){ UI_ShowFPS(FPS_counter); FPS_counter = RESET; }
@@ -167,28 +176,30 @@ int main(void)
 			{
 				if(ADC_VbattPrecent <= 0)
 				{
-					if(pnt_gOSC_MODE->OFF_Struct.Vbatt != 1)
+					if(AutoOff_Timer.Vbatt != 1)
 					{
 						gMessage.TimeShow = 60;
 						Show_Message("Connect Cargher, auto off in 1 min");
-						t_WorkMinutes = pnt_gOSC_MODE->OFF_Struct.Work_Minutes;
-						pnt_gOSC_MODE->OFF_Struct.ResetTime = RTC_GetCounter();
-						pnt_gOSC_MODE->OFF_Struct.Vbatt = 1;
-						pnt_gOSC_MODE->OFF_Struct.Work_Minutes = 1;
-						pnt_gOSC_MODE->OFF_Struct.State = ENABLE;
+						t_WorkMinutes = AutoOff_Timer.Work_Minutes;
+						AutoOff_Timer.ResetTime = RTC_GetCounter();
+						AutoOff_Timer.Vbatt = 1;
+						AutoOff_Timer.Work_Minutes = 1;
+						AutoOff_Timer.State = ENABLE;
 						Draw_Batt(1, 1);
 					}
 				}
 				else
 				{
-					if(pnt_gOSC_MODE->OFF_Struct.Vbatt == 1)
+					if(AutoOff_Timer.Vbatt == 1)
 					{
-						pnt_gOSC_MODE->OFF_Struct.Vbatt = 0;
+						AutoOff_Timer.Vbatt = 0;
 						gMessage.TimeShow = 1;
+
 						Clear_Message();
-						pnt_gOSC_MODE->OFF_Struct.ResetTime = RTC_GetCounter();
-						pnt_gOSC_MODE->OFF_Struct.Work_Minutes = t_WorkMinutes;
-						pnt_gOSC_MODE->OFF_Struct.State = DISABLE;
+
+						AutoOff_Timer.ResetTime = RTC_GetCounter();
+						AutoOff_Timer.Work_Minutes = t_WorkMinutes;
+						AutoOff_Timer.State = DISABLE;
 					}
 
 					Draw_Batt(ADC_VbattPrecent, 1);
@@ -204,29 +215,37 @@ int main(void)
 }
 
 
-/*******************************************************************************
- * Function Name  : setCondition
- * Description    : приостановка/запуск каналов
- * Input          : None
- * Return         : None
- *******************************************************************************/
+/**
+ * @brief  setCondition, global work state - RUN or HOLD
+ * @param  None
+ * @retval None
+ */
 void setCondition(State_TypeDef NewState)
 {
-	saveActiveButton(btn);
-	setActiveButton(&btnRUN_HOLD);
+	static Boolean pwr;
 
-	if(NewState == STOP) btn->Text = "STOP";
-	else if(NewState == RUN) btn->Text = "RUN";
-	else return;
+	/* Switch to power save in STOP work state */
+	if(NewState == STOP)
+	{
+		pwr = gOSC_MODE.PowerSave;
+		gOSC_MODE.PowerSave = TRUE;
 
-	pnt_gOSC_MODE->State = NewState;
-
-	if(saved_btn == &btnRUN_HOLD) LCD_DrawButton(btn, activeButton);
+		/* Update button RUN/HOLD */
+		btnRUN_HOLD.Text = "STOP";
+	}
 	else
 	{
-		LCD_DrawButton(btn, NO_activeButton);
-		setActiveButton(saved_btn);
+		if(gOSC_MODE.State == STOP) gOSC_MODE.PowerSave = pwr;
+
+		/* Update button RUN/HOLD */
+		btnRUN_HOLD.Text = "RUN";
 	}
+
+	/* Set the new global work state */
+	gOSC_MODE.State = NewState;
+
+	if(btn == &btnRUN_HOLD)	LCD_DrawButton(&btnRUN_HOLD, activeButton);
+	else LCD_DrawButton(&btnRUN_HOLD, NO_activeButton);
 }
 
 

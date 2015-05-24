@@ -59,7 +59,7 @@ void EEPROM_Read(uint8_t *prefMassive, uint16_t start_address, uint8_t numValues
 		delay_ms(10);
 	}
 	
-	__enable_irq ();	    
+	__enable_irq ();
 }
 
 
@@ -86,7 +86,7 @@ void EEPROM_Write(uint8_t *prefMassive, uint16_t start_address, uint8_t numValue
 		delay_ms(10);
 	}
 	
-	__enable_irq ();  
+	__enable_irq ();
 }
 
 

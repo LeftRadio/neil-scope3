@@ -41,6 +41,7 @@
 #define DarkAuqa			0x1e4
 #define GrayBlue    		0x41f
 #define Yellow          	0xffe0
+#define StillBlue     		0x10a4
 
 /* Exported variables --------------------------------------------------------*/
 extern const uint16_t M256_Colors[256];

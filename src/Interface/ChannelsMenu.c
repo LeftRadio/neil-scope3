@@ -12,10 +12,12 @@ Comments    :
 #include "main.h"
 #include "Settings.h"
 #include "User_Interface.h"
+#include "Analog.h"
 #include "ChannelsMenu.h"
 #include "AutoCorrectCH.h"
 #include "Trig_Menu.h"
 #include "EPM570.h"
+#include "Synchronization.h"
 #include "Processing_and_output.h"
 #include "ChannelsMenuButtons.c"
 #include "colors 5-6-5.h"
@@ -28,6 +30,7 @@ uint16_t CH_sw = 0;
 uint8_t COLOR_Mn_Upper_Y;
 extern uint16_t *p256ColorMassive;
 
+
 /* Exported variables --------------------------------------------------------*/
 Menu_Struct_TypeDef ChannelA_Menu = {
 		{ 35, 19, 120, ((LowerBtn - 3) + ((btnHight + btnSW) * (6 + 1))) + 1 },
@@ -36,6 +39,7 @@ Menu_Struct_TypeDef ChannelA_Menu = {
 		6,
 		6,
 		6,
+		M_CLEAR,
 		DOWN,
 		UP,
 		{ &IntrlCorrect_A, &TextColor_A, &Color_A, &Auto_Correction_Zero_A, &Correction_Zero_A, &AutoDiv_A, &Offset_A },
@@ -49,10 +53,11 @@ Menu_Struct_TypeDef ChannelB_Menu = {
 		ChannelButtonsMAX,
 		ChannelButtonsMAX,
 		ChannelButtonsMAX,
+		M_CLEAR,
 		DOWN,
 		UP,
 		{ &TextColor_B, &Color_B, &Auto_Correction_Zero_B, &Correction_Zero_B, &AutoDiv_B, &Offset_B },
-		(void*)0
+		(void*)0,
 };
 
 
@@ -66,36 +71,33 @@ static void Change_COLOR_CH(int8_t sign, uint8_t CHANNEL, uint8_t *pColorIndx);
 
 /* Functions ----------------------------------------------------------------*/
 
-/*******************************************************************************
-* Function Name  : CorrectZ_CH_A
-* Description    : Функция коррекции нуля канала А
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Correct_AnalogZero_CH_A
+ * @param  None
+ * @retval None
+ */
 void Correct_AnalogZero_CH_A(void)
 {
 	Correct_Analog_Zero(&INFO_A);
 }
 
 
-/*******************************************************************************
-* Function Name  : CorrectZ_CH_B
-* Description    : Функция коррекции нуля канала В
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Correct_AnalogZero_CH_B
+ * @param  None
+ * @retval None
+ */
 void Correct_AnalogZero_CH_B(void)
 { 
 	Correct_Analog_Zero(&INFO_B);
 }
 
 
-/*******************************************************************************
-* Function Name  : CorrectZ
-* Description    : Функция смещения
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Correct_Analog_Zero
+ * @param  Channel pointer
+ * @retval None
+ */
 static void Correct_Analog_Zero(CH_INFO_TypeDef *Channel)
 {
 	if(ActiveMode == &FFT_MODE) return;
@@ -108,13 +110,11 @@ static void Correct_Analog_Zero(CH_INFO_TypeDef *Channel)
 }
 
 
-/*******************************************************************************
-* Function Name  : OFFSET_CH_A
-* Description    : Функция смещения канала А
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  OFFSET_CH_A
+ * @param  None
+ * @retval None
+ */
 void OFFSET_CH_A(void)
 {
 	int8_t sign;
@@ -130,13 +130,11 @@ void OFFSET_CH_A(void)
 }
  
 
-/*******************************************************************************
-* Function Name  : OFFSET_CH_B
-* Description    : Функция смещения канала B
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  OFFSET_CH_B
+ * @param  None
+ * @retval None
+ */
 void OFFSET_CH_B(void)
 {
 	int8_t sign;
@@ -152,48 +150,45 @@ void OFFSET_CH_B(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : OFFSET_CH
-* Description    : Функция смещения каналов А/В
-* Input          :
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  OFFSET_CH_A
+ * @param  Offset sign
+ * @retval None
+ */
 void OFFSET_CH(int8_t sign)
 {
 	uint8_t speed = (speed_up_cnt++ >= 10)? 5 : 1;
 	int16_t diff = speed * sign;
 
-	Draw_Cursor_CH(globalBackColor); // очищаем старый курсор
+	Draw_Cursor_CH(globalBackColor);
 
 	/* изменяем позицию курсорa */
 	if(pINFO->Position < lowerLimit + 12) pINFO->Position = lowerLimit + 12;
 	else if (pINFO->Position > upperLimit - 12) pINFO->Position = upperLimit - 12;
 	else pINFO->Position = pINFO->Position + diff;
 
-	if((gOSC_MODE.SyncSourse == pINFO->Mode.ID) && (pnt_gOSC_MODE->oscSync != Sync_NONE))
+	if((gSyncState.Sourse == pINFO->Mode.ID) && (gSyncState.Mode != Sync_NONE))
 	{
-		if((pnt_gOSC_MODE->AnalogSyncType == Sync_Rise) || (pnt_gOSC_MODE->AnalogSyncType == Sync_Fall))
+		if((gSyncState.Type == Sync_Rise) || (gSyncState.Type == Sync_Fall))
 		{
 			Sync_ChangeLevel(&Height_Y_cursor, diff);
 		}
-		else if((pnt_gOSC_MODE->AnalogSyncType == Sync_IN_WIN) || (pnt_gOSC_MODE->AnalogSyncType == Sync_OUT_WIN))
+		else if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
 		{
 			Sync_ChangeLevel(&Height_Y_cursor, diff);
 			Sync_ChangeLevel(&Low_Y_cursor, diff);
 		}
 	}
-//	Set_Trigger(pnt_gOSC_MODE->AnalogSyncType);		/* обновляем регистр ПЛИС - Trigger_level_A  */
-	Draw_CH_Cursors();	/* обновляем указатели по новой позиции */
+
+	Draw_CH_Cursors();
 }
 
 
-/*******************************************************************************
-* Function Name  : AutoDivider_A
-* Description    :
-* Input          :
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  AutoDivider_A
+ * @param  None
+ * @retval None
+ */
 void AutoDivider_A(void)
 {
 	if(ButtonsCode == RIGHT) AutoDivider(CHANNEL_A, ENABLE);
@@ -201,12 +196,11 @@ void AutoDivider_A(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : AutoDivider_B
-* Description    :
-* Input          :
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  AutoDivider_B
+ * @param  None
+ * @retval None
+ */
 void AutoDivider_B(void)
 {
 	if(ButtonsCode == RIGHT) AutoDivider(CHANNEL_B, ENABLE);
@@ -214,12 +208,11 @@ void AutoDivider_B(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : AutoDivider
-* Description    :
-* Input          :
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  AutoDivider
+ * @param  Channel ID and new state
+ * @retval None
+ */
 void AutoDivider(Channel_ID_TypeDef Channel, FunctionalState NewState)
 {
 	static char *message;
@@ -235,13 +228,11 @@ void AutoDivider(Channel_ID_TypeDef Channel, FunctionalState NewState)
 
 /*----------------------------------------------- Colors --------------------------------------------------*/
 
-/*******************************************************************************
-* Function Name  : COLOR_CH_A
-* Description    : Функция изменения цвета канала А
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Change_COLOR_CH_A
+ * @param  None
+ * @retval None
+ */
 void Change_COLOR_CH_A(void)
 {
 	int8_t sign;
@@ -258,13 +249,11 @@ void Change_COLOR_CH_A(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : COLOR_CH_B
-* Description    : Функция изменения цвета канала B
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Change_TextColor_CH_A
+ * @param  None
+ * @retval None
+ */
 void Change_TextColor_CH_A(void)
 {
 	int8_t sign;
@@ -281,13 +270,11 @@ void Change_TextColor_CH_A(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : COLOR_CH_B
-* Description    : Функция изменения цвета канала B
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Change_COLOR_CH_B
+ * @param  None
+ * @retval None
+ */
 void Change_COLOR_CH_B(void)
 {
 	int8_t sign;
@@ -304,13 +291,11 @@ void Change_COLOR_CH_B(void)
 }
 
 
-/*******************************************************************************
-* Function Name  : COLOR_CH_B
-* Description    : Функция изменения цвета канала B
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Change_TextColor_CH_B
+ * @param  None
+ * @retval None
+ */
 void Change_TextColor_CH_B(void)
 {
 	int8_t sign;
@@ -328,13 +313,11 @@ void Change_TextColor_CH_B(void)
 
 
 
-/*******************************************************************************
-* Function Name  : Change_COLOR_CH
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Change_COLOR_CH
+ * @param
+ * @retval None
+ */
 static void Change_COLOR_CH(int8_t sign, uint8_t CHANNEL, uint8_t *pColorIndx)
 {
 	uint16_t Color, tColor;
@@ -368,13 +351,11 @@ static void Change_COLOR_CH(int8_t sign, uint8_t CHANNEL, uint8_t *pColorIndx)
 
 
 
-/*******************************************************************************
-* Function Name  : Intrlive_Correct
-* Description    :
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Intrlive_Correct
+ * @param  interlive correct channels A/B
+ * @retval None
+ */
 void Intrlive_Correct(void)
 {
 	if((InterliveCorrectionCoeff < 126) && (ButtonsCode == RIGHT)) InterliveCorrectionCoeff++;

@@ -20,7 +20,7 @@ typedef struct
 {
 	FunctionalState State;
 	HostRequestType Request;
-	uint32_t RequestDataLen;
+	uint32_t DataLen;
 
 } HostRequest_TypeDef;
 
@@ -40,6 +40,8 @@ void Switch_To_AutoMode(void);
 void Host_RequestReset(void);
 FlagStatus Host_GetTerminateCmd(void);
 
+uint8_t CRC8_Buff(uint8_t *pBuff, uint16_t NumBytes);
+uint8_t CRC8(uint8_t Byte, uint8_t crc);
 
 
 

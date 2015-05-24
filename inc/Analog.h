@@ -28,6 +28,10 @@ FunctionalState Get_AutoDivider_State(Channel_ID_TypeDef CH);
 void Set_AutoDivider_State(Channel_ID_TypeDef CH, FunctionalState NewState);
 FunctionalState Analog_AutodividerMain(void);
 
+void Analog_SetInput_ACDC(uint8_t Channel, Channel_AC_DC_TypeDef AC_DC_NewState);
+void Analog_InteliveMode(Boolean NewState);
+
+
 #endif /* __ANALOG_H */
 /*********************************************************************************************************
       END FILE
