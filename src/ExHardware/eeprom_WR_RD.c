@@ -29,8 +29,8 @@ __IO uint32_t  sEETimeout = sEE_LONG_TIMEOUT;
 uint8_t err_I2C_flag = 0;
 
 /* Private function prototypes -----------------------------------------------*/
-void I2C_Write_EEPROM_Cycle(uint8_t *Data, uint16_t address);
-void I2C_Read_EEPROM_Cycle(uint8_t *Data, uint16_t address);
+static void I2C_Write_EEPROM_Cycle(uint8_t *Data, uint16_t address);
+static void I2C_Read_EEPROM_Cycle(uint8_t *Data, uint16_t address);
 void Error_message(char* message_text);
 
 
@@ -78,6 +78,7 @@ void EEPROM_Write(uint8_t *prefMassive, uint16_t start_address, uint8_t numValue
 	uint8_t EE_cnt;
 
 	__disable_irq ();			// запрещаем все прерывания
+	ButtonPush = B_RESET;		// костыль :(
 
 	/* Пишем данные в EEPROM */
 	for(EE_cnt = 0; EE_cnt < numValues; EE_cnt++)
@@ -99,7 +100,7 @@ void EEPROM_Write(uint8_t *prefMassive, uint16_t start_address, uint8_t numValue
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void I2C_Write_EEPROM_Cycle(uint8_t *Data, uint16_t address)
+static void I2C_Write_EEPROM_Cycle(uint8_t *Data, uint16_t address)
 {	
     uint8_t LSB_address = (uint8_t)(address & 0x00FF);
 	uint8_t MSB_address = (uint8_t)((address & 0xFF00) >> 8);
@@ -155,7 +156,7 @@ void I2C_Write_EEPROM_Cycle(uint8_t *Data, uint16_t address)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void I2C_Read_EEPROM_Cycle(uint8_t *Data, uint16_t address)
+static void I2C_Read_EEPROM_Cycle(uint8_t *Data, uint16_t address)
 {
 	uint8_t LSB_address = (uint8_t)(address & 0x00FF);
 	uint8_t MSB_address = (uint8_t)((address & 0xFF00) >> 8);

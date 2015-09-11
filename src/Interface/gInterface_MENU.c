@@ -59,7 +59,6 @@ extern void Init_Meas_Values(void);
 /* Private function prototypes -----------------------------------------------*/
 static void Auto_Sweep(void);
 static void Change_Analog_Div(Channel_ID_TypeDef Channel);
-static void ON_OFF_Channels(CH_INFO_TypeDef * Channel);
 
 
 /* Private functions ---------------------------------------------------------*/
@@ -170,10 +169,15 @@ void change_Sweep(void)
 		{
 			ScaleIndex--;
 
+			if(!ScaleIndex) gOSC_MODE.Interleave = FALSE;
+
 			if(gOSC_MODE.Interleave == TRUE) SweepScale = (uint8_t*)&IntrlSweepScaleCoff[ScaleIndex];
 			else SweepScale = (uint8_t*)&SweepScaleCoff[ScaleIndex];
 		}
-		else if(SweepIndex < 20) SweepIndex++;
+		else if(SweepIndex < 20)
+		{
+			SweepIndex++;
+		}
 	}
 	else if(ButtonsCode == UP)
 	{
@@ -279,7 +283,8 @@ void Sweep_Mode(SyncMode_TypeDef NewSyncMode, Boolean Init)
 		{
 			/* Очищаем линии указателей уровней триггера */
 			if(Init != TRUE) Draw_Cursor_Trig(CLEAR, Active_BackColor, Active_BackColor);
-			Draw_CH_Cursors();
+			Draw_Cursor_CH(&INFO_A, INFO_A.Color);
+			Draw_Cursor_CH(&INFO_B, INFO_B.Color);
 		}
 	}
 
@@ -426,7 +431,7 @@ void RUN_HOLD(void)
 *******************************************************************************/
 void ON_OFF_CHANNEL_A(void)
 {
-	ON_OFF_Channels(&INFO_A);
+	ON_OFF_Channels(&INFO_A, FALSE);
 }
 
 
@@ -441,7 +446,7 @@ void ON_OFF_CHANNEL_B(void)
 {
 	Channel_AC_DC_TypeDef tAC_DC = INFO_B.Mode.AC_DC;
 
-	ON_OFF_Channels(&INFO_B);
+	ON_OFF_Channels(&INFO_B, FALSE);
 
 	if(((SweepIndex == 0) && (ScaleIndex > 0)) && (tAC_DC != INFO_B.Mode.AC_DC))
 	{
@@ -461,28 +466,31 @@ void ON_OFF_CHANNEL_B(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void ON_OFF_Channels(CH_INFO_TypeDef * Channel)
+void ON_OFF_Channels(CH_INFO_TypeDef* Channel, Boolean init)
 {
 	static const char ON_OFF_TEXT[3][4] = { {"OFF"}, {"AC "}, {"DC "} };
 
 	/* проверка нажатий кнопок и изменения индекса канала если были нажаты */
 	if((ButtonsCode == UP) || (ButtonsCode == OK)) Channel->Mode.AC_DC++;
 	else if(ButtonsCode == DOWN) Channel->Mode.AC_DC--;
-	else return;
+	else if(!init) return;
+
 	if(Channel->Mode.AC_DC > 2) Channel->Mode.AC_DC = 0;
 	else if(Channel->Mode.AC_DC < 0) Channel->Mode.AC_DC = 2;
 
 	if(Channel->Mode.AC_DC == NONE)         // если индекс равен 0
 	{
-		Channel->Mode.EN = STOP;                  // останавливаем канал
-		Clear_OLD_DataCH_ON_SCREEN(Channel->Mode.ID, leftLimit, rightLimit - 2);  // очищаем этот канал экране
+		Channel->Mode.EN = STOP;
+		Clear_OLD_DataCH_ON_SCREEN(Channel->Mode.ID, leftLimit, rightLimit - 2);
+		Draw_Cursor_CH(Channel, globalBackColor);
 	}
 	else if(Channel->Mode.AC_DC > 0)	    // иначе запускаем
 	{
 		Channel->Mode.EN = RUN;
-
-		/* пишем в регистр ПЛИС открытый или закрытый вход в зависимости от pnt_Channel->AC_DC */
+		/* Write to EPM570 new AC/DC channel state */
 		Analog_SetInput_ACDC(Channel->Mode.ID, Channel->Mode.AC_DC);
+		/* Draw channel cursor*/
+		Draw_Cursor_CH(Channel, Channel->Color);
 	}
 
 	/* обновляем текст на кнопке соответсвующего канала */

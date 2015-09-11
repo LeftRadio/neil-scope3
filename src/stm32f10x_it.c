@@ -230,7 +230,7 @@ void TIM1_UP_IRQHandler(void)
 {
 	TIM1->SR &= ~TIM_SR_UIF;
 
-	if(TimeoutCnt-- <= 0)
+	if(--TimeoutCnt < 1)
 	{
 		SRAM_TimeoutState = SET;
 		TIM1->CR1 &= ~TIM_CR1_CEN;

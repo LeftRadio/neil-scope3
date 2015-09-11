@@ -160,27 +160,30 @@ void OFFSET_CH(int8_t sign)
 	uint8_t speed = (speed_up_cnt++ >= 10)? 5 : 1;
 	int16_t diff = speed * sign;
 
-	Draw_Cursor_CH(globalBackColor);
-
-	/* изменяем позицию курсорa */
-	if(pINFO->Position < lowerLimit + 12) pINFO->Position = lowerLimit + 12;
-	else if (pINFO->Position > upperLimit - 12) pINFO->Position = upperLimit - 12;
-	else pINFO->Position = pINFO->Position + diff;
-
-	if((gSyncState.Sourse == pINFO->Mode.ID) && (gSyncState.Mode != Sync_NONE))
+	if(pINFO->Mode.EN != STOP)
 	{
-		if((gSyncState.Type == Sync_Rise) || (gSyncState.Type == Sync_Fall))
-		{
-			Sync_ChangeLevel(&Height_Y_cursor, diff);
-		}
-		else if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
-		{
-			Sync_ChangeLevel(&Height_Y_cursor, diff);
-			Sync_ChangeLevel(&Low_Y_cursor, diff);
-		}
-	}
+		Draw_Cursor_CH(pINFO, globalBackColor);
 
-	Draw_CH_Cursors();
+		/* изменяем позицию курсорa */
+		if(pINFO->Position < lowerLimit + 12) pINFO->Position = lowerLimit + 12;
+		else if (pINFO->Position > upperLimit - 12) pINFO->Position = upperLimit - 12;
+		else pINFO->Position = pINFO->Position + diff;
+
+		if((gSyncState.Sourse == pINFO->Mode.ID) && (gSyncState.Mode != Sync_NONE))
+		{
+			if((gSyncState.Type == Sync_Rise) || (gSyncState.Type == Sync_Fall))
+			{
+				Sync_ChangeLevel(&Height_Y_cursor, diff);
+			}
+			else if((gSyncState.Type == Sync_IN_WIN) || (gSyncState.Type == Sync_OUT_WIN))
+			{
+				Sync_ChangeLevel(&Height_Y_cursor, diff);
+				Sync_ChangeLevel(&Low_Y_cursor, diff);
+			}
+		}
+
+		UI_Update_CH_Cursors();
+	}
 }
 
 
@@ -342,7 +345,7 @@ static void Change_COLOR_CH(int8_t sign, uint8_t CHANNEL, uint8_t *pColorIndx)
     	btnVDIV->Color = tColor;
     	btn_AC_DC->Color = tColor;
 
-    	Draw_Cursor_CH(pINFO->Color);
+    	Draw_Cursor_CH(pINFO, pINFO->Color);
     }
 	
     LCD_DrawButton(btnVDIV, NO_activeButton);

@@ -103,8 +103,8 @@ void UI_ShowFPS(uint8_t FPS_counter);
 void UI_SamplingSetTimeout(uint16_t TextColor);
 void UI_SamplingClearTimeout(void);
 
-void Draw_CH_Cursors(void);
-void Draw_Cursor_CH(uint16_t color);                // отрисовка курсора канала А/B
+void UI_Update_CH_Cursors(void);
+void Draw_Cursor_CH(CH_INFO_TypeDef* Channel, uint16_t color);                // отрисовка курсора канала А/B
 void DrawTrig_PosX(DrawState NewState, TrigCursorINFO *TrigCursor);                   // отрисовка указателя курсора позиции срабатывания триггера
 void Draw_Cursor_Trig(DrawState NewState, uint16_t ClearColor, uint16_t TextColor);   // отрисовка курсора триггера
 void Draw_Cursor_Trig_Line(DrawState NewState, TrigCursorINFO *TrigCursor);   // отрисовка линии курсора триггера

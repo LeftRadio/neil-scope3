@@ -166,8 +166,7 @@ void Draw_Interface(void)
 	Draw_Cursor_Trig(DRAW, LightGray4, Red);
 	DrawTrig_PosX(DRAW, &trigPosX_cursor);
 	Draw_Trigg_Info(TriggShowInfo.Status);
-
-	Draw_CH_Cursors();
+	UI_Update_CH_Cursors();
 	Draw_Batt(100, 0);
 
 	LCD_PutColorStrig(320, 224, 1, "FPS:", LightGray);	// print FPS label
@@ -518,18 +517,15 @@ void UI_SamplingClearTimeout(void)
 
 /* ----------------------------------------------- CURSORS ----------------------------------------------- */
 
-/*******************************************************************************
-* Function Name  : Draw_CH_Cursors
-* Description    : отрисовка курсоров растеризированными треугольниками
-* Input          : uint16_t color
-* Return         : None
-*******************************************************************************/
-void Draw_CH_Cursors(void)
+
+void UI_Update_CH_Cursors(void)
 {
-	Set_CH_TypeINFO(CHANNEL_A); 
-	Draw_Cursor_CH(pINFO->Color);
-	Set_CH_TypeINFO(CHANNEL_B);
-	Draw_Cursor_CH(pINFO->Color);    
+	if(INFO_A.Mode.EN != STOP){
+		Draw_Cursor_CH(&INFO_A, pINFO->Color);
+	}
+	if(INFO_B.Mode.EN != STOP){
+		Draw_Cursor_CH(&INFO_B, pINFO->Color);
+	}
 }
 
 
@@ -539,9 +535,9 @@ void Draw_CH_Cursors(void)
 * Input          : uint16_t color
 * Return         : None
 *******************************************************************************/
-void Draw_Cursor_CH(uint16_t color)
+void Draw_Cursor_CH(CH_INFO_TypeDef* Channel, uint16_t color)
 { 
-	LCD_DrawFillTriangle(0, pINFO->Position - 3, 0, pINFO->Position + 5, leftLimit, pINFO->Position + 1, color);  
+	LCD_DrawFillTriangle(0, Channel->Position - 3, 0, Channel->Position + 5, leftLimit, Channel->Position + 1, color);
 }
 
 

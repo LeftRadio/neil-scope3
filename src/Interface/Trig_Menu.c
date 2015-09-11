@@ -233,7 +233,8 @@ void Sync_ChangeLevel(TrigCursorINFO *Cursor, int16_t Diff)
 
 	/* Update trigger and channels cursors, trigger info on LCD */
 	Draw_Cursor_Trig(DRAW, globalBackColor, Red);
-	Draw_CH_Cursors();
+	Draw_Cursor_CH(&INFO_A, INFO_A.Color);
+	Draw_Cursor_CH(&INFO_B, INFO_B.Color);
 	Update_triggInfo_OnScreen(ReDRAW);
 
 	/* Update sync mode */
@@ -333,7 +334,8 @@ void Trigg_SyncSourse(void)
 	Update_triggInfo_OnScreen(ReDRAW);
 
 	/* redraw channel cursors */
-	Draw_CH_Cursors();
+	Draw_Cursor_CH(&INFO_A, INFO_A.Color);
+	Draw_Cursor_CH(&INFO_B, INFO_B.Color);
 
 	/* Update EPM570 sync registers */
 	gSyncState.foops->StateUpdate();

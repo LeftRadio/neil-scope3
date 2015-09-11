@@ -36,6 +36,7 @@ void Hide_Show_Meas(void);
 void RUN_HOLD(void);
 void ON_OFF_CHANNEL_A(void);
 void ON_OFF_CHANNEL_B(void);
+void ON_OFF_Channels(CH_INFO_TypeDef * Channel, Boolean init);
 void change_TIME_SCALE(void);
 void setCondition(uint8_t RUN_HOLD);    /* приостановка/запуск каналов */
 

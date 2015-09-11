@@ -200,8 +200,6 @@ static void EPM570_SRAM_TimeoutCounterSetState(FunctionalState NewState, uint32_
 	TIM1->CNT = 0;
 	if(NewState == ENABLE) TIM1->CR1 |= TIM_CR1_CEN;
 	else TIM1->CR1 &= ~TIM_CR1_CEN;
-
-
 }
 
 
@@ -233,7 +231,7 @@ State_TypeDef EPM570_SRAM_GetWriteState(void)
   */
 State_TypeDef EPM570_SRAM_Write(void)
 {   
-	const uint32_t TimeoutTime_ms = 1000;
+	uint32_t TimeoutTime_ms = 1000;
 	static uint16_t tColor = White, tFlag = 0;
 	SyncMode_TypeDef  tSyncMode = gSyncState.Mode;
 
@@ -244,12 +242,12 @@ State_TypeDef EPM570_SRAM_Write(void)
 	Analog_InteliveMode(gOSC_MODE.Interleave);
 
 	/* Sync mode update */
-	gSyncState.foops->StateUpdate();
+//	gSyncState.foops->StateUpdate();
 
 	/* Calculate needed timeout counter in ms */
-//	TimeoutTime_ms = 200 + ((EPM570_Get_numPoints() * EPM570_Get_Decimation() * 10 * ActiveMode->oscNumPoints_Ratio) / (1000000 * (*SweepScale)) );
-//	if(TimeoutTime_ms > 1000) TimeoutTime_ms = 1000;
-//	TimeoutTime_ms = 1000;
+	if(gSyncState.Mode != Sync_NONE) {
+		TimeoutTime_ms = 200 + ( (EPM570_Get_numPoints() * EPM570_Get_Decimation() * ActiveMode->oscNumPoints_Ratio * 4) / 100000 );
+	}
 
 	/* Enable Oscillator KXO97 */
 	EPM570_Register_extPin_1.bit.OSC_EN = 1;
@@ -292,7 +290,6 @@ State_TypeDef EPM570_SRAM_Write(void)
 			if(gSyncState.Mode == Sync_AUTO)
 			{
 				gSyncState.Mode = Sync_NONE;
-				gSyncState.foops->StateUpdate();
 				tColor = Yellow;
 				break;
 			}
@@ -324,6 +321,7 @@ State_TypeDef EPM570_SRAM_Write(void)
 
 	/* Update synchronization state */
 	gSyncState.Mode = tSyncMode;
+	gSyncState.foops->StateUpdate();
 
 	if(wrSRAM != STOP)
 	{
@@ -387,6 +385,28 @@ void EPM570_SRAM_ReadState(FunctionalState NewState)
 }
 
 
+static void EPM570_SRAM_MINMAX_ShiftToStartReadPoint(void)
+{
+	int16_t data_0 = 0, data_1 = 0;
+
+	/* Read data 0 */
+	EPM570_RS_set; EPM570_RS_set;
+	data_0 = ~((GPIOB->IDR >> 8) - 127);
+	EPM570_RS_clr; EPM570_RS_clr;
+
+	/* Read data 1 */
+	EPM570_RS_set; EPM570_RS_set;
+	data_1 = ~((GPIOB->IDR >> 8) - 127);
+	EPM570_RS_clr; EPM570_RS_clr;
+
+	if(data_0 > data_1)
+	{
+		EPM570_RS_set; EPM570_RS_set;
+		EPM570_RS_clr; EPM570_RS_clr;
+	}
+}
+
+
 /**
   * @brief  EPM570_SRAM_Shift
   * @param
@@ -415,7 +435,6 @@ void EPM570_SRAM_Shift(int32_t cnt, uint8_t UP_DOWN)
 				if(gSamplesWin.Sweep != 0) cnt += 2;
 				else cnt += 4;
 			}
-
 
 			EPM570_SRAM_ReadState(ENABLE);
 			while(cnt-- > 0)
@@ -450,10 +469,7 @@ void EPM570_SRAM_Read(void)
 	VisibleSamples = (((rightLimit - leftLimit) - 1) * ActiveMode->oscNumPoints_Ratio) / (*SweepScale);
 	StarPointRead = ((SamplesWindow - ((gSamplesWin.WindowPosition + 1) * VisibleSamples)) - 0) / InterliveCoeff;
 
-	NVIC_DisableIRQ(TIM2_IRQn);	  		// запрет прерываний таймера опроса кнопок
-
-	/* Reset read state */
-	EPM570_SRAM_ReadState(DISABLE);
+	NVIC_DisableIRQ(TIM2_IRQn);
 
 	/* Roll back and shift to read data */
 	EPM570_SRAM_Shift(0x7fffffff, SRAM_READ_DOWN);
@@ -461,12 +477,6 @@ void EPM570_SRAM_Read(void)
 
 	/* Enable read state for capture data */
 	EPM570_SRAM_ReadState(ENABLE);
-
-	if(ActiveMode == &IntMIN_MAX)
-	{
-		EPM570_RS_set; EPM570_RS_set;
-		EPM570_RS_clr; EPM570_RS_clr;
-	}
 
 	/* Read Data */
 	sCNT = VisibleSamples;
@@ -489,6 +499,10 @@ void EPM570_SRAM_Read(void)
 	}
 	else
 	{
+		if(ActiveMode == &IntMIN_MAX) {
+			EPM570_SRAM_MINMAX_ShiftToStartReadPoint();
+		}
+
 		do
 		{
 			/* Read data CH A */
@@ -511,10 +525,8 @@ void EPM570_SRAM_Read(void)
 	/* Reset read state */
 	EPM570_SRAM_ReadState(DISABLE);
 
-
-
 	/* Enable interupts for read buttons */
-	NVIC_EnableIRQ(TIM2_IRQn);	   // разрешение прерываний таймера опроса кнопок
+	NVIC_EnableIRQ(TIM2_IRQn);
 }
 
 

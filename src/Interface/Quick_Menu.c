@@ -113,7 +113,8 @@ void Change_Color_Grid(void)
 	Change_COLOR_Mn_Position(indxColorGrid, &activeAreaGrid.Color);
 
 	LCD_DrawGrid(&activeAreaGrid, DRAW); // перерисовываем сетку в области осциллограмм
-	Draw_CH_Cursors();      // рисуем курсоры
+	Draw_Cursor_CH(&INFO_A, INFO_A.Color);
+	Draw_Cursor_CH(&INFO_B, INFO_B.Color);
 
 	if(Get_State_COLOR_Mn() == DRAW) Draw_COLOR_Mn(128);
 	else Init_COLOR_Mn(128, (uint16_t*)grayScalle);

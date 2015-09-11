@@ -218,8 +218,6 @@ void LoadPreference(void)
 
 		/* ------------------------------------- Update States, Modes, Texts and other ------------------------------------- */
 
-
-
 		/* вид интерполяции */
 		ActiveMode = (InterpolationMode_TypeDef*)InterpModes[Interpolate_AciveMode_Index];	//
 		if(ActiveMode == &FFT_MODE)
@@ -249,12 +247,14 @@ void LoadPreference(void)
 		gSyncState.foops->SetTrigg_X(trigPosX_cursor.Position - leftLimit);
 		gSyncState.foops->StateUpdate();
 
+		/* AC/DC inputs state */
+		setActiveButton(gInterfaceMenu.Buttons[8]);
+		ON_OFF_Channels(&INFO_A, TRUE);
+		setActiveButton(gInterfaceMenu.Buttons[9]);
+		ON_OFF_Channels(&INFO_B, TRUE);
+
 		/* Autodivider for analog inputs */
 		Set_AutoDivider_State(param_auto_div, ENABLE);
-
-		/* AC/DC inputs state */
-		setActiveButton(gInterfaceMenu.Buttons[8]); ON_OFF_CHANNEL_A();
-		setActiveButton(gInterfaceMenu.Buttons[9]); ON_OFF_CHANNEL_B();
 
 		/* PWM correction zero for analog inputs */
 		*(INFO_A.AD_Type.Analog.corrZ) = INFO_A.AD_Type.Analog.Zero_PWM_values[INFO_A.AD_Type.Analog.Div];

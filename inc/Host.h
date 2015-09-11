@@ -13,7 +13,7 @@
 
 /* Includes ------------------------------------------------------------------*/	   
 /* Exported typedef ----------------------------------------------------------*/
-typedef enum { NO_Request, Data_Request, Calibrate_Request, Bootoader_Request} HostRequestType;
+typedef enum { NO_Request, Data_Request, Calibrate_Request, Disconnect, Bootoader_Request} HostRequestType;
 
 /* Host Request struct type */
 typedef struct

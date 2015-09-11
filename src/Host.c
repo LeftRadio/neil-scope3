@@ -82,7 +82,11 @@ volatile HostRequest_TypeDef gHostRequest = { DISABLE, NO_Request, 0 };
 Channel_ID_TypeDef CalibrateChannel;
 
 char SoftwarwVersion[20] = "";
-const char* SoftwareName[2] = { "Connect 'NeilScope Software' ver", "Connect 'NeilLogic Analyzer' ver"};
+const char* SoftwareName[3] = {
+		"Connect 'NeilScope Software' ver",
+		"Connect 'NeilLogic Analyzer' ver",
+		"Connect 'NS test utility' ver"
+};
 
 #ifdef __HOST_DEBUG__
 	char OLD_TransmitString[40] = {0};
@@ -212,7 +216,7 @@ void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen)
 	{
 		USART1->DR = ResponseHeader[i];
 		while((USART1->SR & USART_FLAG_TXE) == (uint16_t)RESET);
-		Control_CRC = CRC8(ResponseHeader[i], Control_CRC);
+		 Control_CRC = CRC8(ResponseHeader[i], Control_CRC);
 #ifdef __HOST_DEBUG__
 		sprintf(&TransmitString[i*5], "0x%02X", ResponseHeader[i]);
 		strcat(TransmitString, " ");
@@ -405,6 +409,13 @@ void Decoding_Command(void)
 	/* Switch recived command from host */
 	switch(CommandData[0])
 	{
+		/* ReConnect command */
+		case HOST_MODE_CMD:
+		{
+			// do nothing
+		}
+		break;
+
 		/* --- Oscilloscope or logic analyzer mode command --- */
 		case OSC_LA_CMD:
 		{
@@ -715,27 +726,22 @@ void Decoding_Command(void)
 
 		case BOOTLOADER_CMD:
 		{
-			if(CommandData[2] == 0x0B)
-			{
+			if(CommandData[2] == 0x0B)	{
 				gHostRequest.DataLen = 0;
 				gHostRequest.State = ENABLE;
 				gHostRequest.Request = Bootoader_Request;
-
-				HostDataCorrect = SUCCESS;
 			}
-			else { HostDataCorrect = ERROR; }
+			else HostDataCorrect = ERROR;
 		}
 		break;
 
 
 		case EXIT_HOST_MODE_CMD:
 		{
-			if(memcmp(CommandData, ExitHostModeRequest, 4) == 0)
-			{
-				/* Reset (default start in automode) */
-				NVIC_SystemReset();
-//				Switch_To_AutoMode();
-				return;
+			if(memcmp(CommandData, ExitHostModeRequest, 4) == 0) {
+				gHostRequest.DataLen = 0;
+				gHostRequest.State = ENABLE;
+				gHostRequest.Request = Disconnect;
 			}
 			else{ HostDataCorrect = ERROR; }
 		}
@@ -896,7 +902,13 @@ static __inline void Host_RequestProcessing(void)
 	{
 		Start_Bootloader();
 	}
-
+	else if (gHostRequest.Request == Disconnect)
+	{
+		/* Reset (default start in automode) */
+		delay_ms(100);
+		NVIC_SystemReset();
+//		Switch_To_AutoMode();
+	}
 	if(gHostRequest.State == ENABLE) Host_RequestReset();
 }
 
