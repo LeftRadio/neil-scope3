@@ -36,7 +36,6 @@ extern __IO HostRequest_TypeDef gHostRequest;
 void Recive_Host_Data(uint8_t IQueueIndex);
 void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen);
 void Transmit_DataBuf_To_Host(void);
-void Switch_To_AutoMode(void);
 void Host_RequestReset(void);
 FlagStatus Host_GetTerminateCmd(void);
 

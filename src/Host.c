@@ -27,6 +27,7 @@
 #include "Sweep.h"
 #include "gInterface_MENU.h"
 #include "IQueue.h"
+#include "i2c_gpio.h"
 
 
 /* Private typedef -----------------------------------------------------------*/
@@ -942,24 +943,7 @@ FlagStatus Host_GetTerminateCmd(void)
 }
 
 
-/**
-  * @brief  Switch_To_AutoMode
-  * @param  None
-  * @retval None
-  */
-void Switch_To_AutoMode(void)
-{
-	Beep_Start();
-	External_Peripheral_Init();		// Инициализация и проверка внешней периферии
-	LoadPreference();				// Чтение сохраненных настроек из EEPROM
-	Draw_Interface();				// Нарисовать интерфейс
 
-	EPM570_Set_LA_RLE_State(DISABLE);
-	GPIOC->BRR = GPIO_Pin_13;
-	HostMode = DISABLE;
-
-	NVIC_EnableIRQ(RTC_IRQn);
-}
 
 
 /**

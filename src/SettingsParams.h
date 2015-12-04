@@ -75,7 +75,7 @@ const SettingsParam_TypeDef Param_ShowFFTFreq = { (uint8_t*)&gShowFFTFreq, 0x73,
 const SettingsParam_TypeDef Param_InterliveCorrectionCoeff = { (uint8_t*)&InterliveCorrectionCoeff, 0x75, 1 };
 const SettingsParam_TypeDef Param_oscNumPoints = { (uint8_t*)&gOSC_MODE.oscNumPoints , 0x77, 3 };
 
-//const SettingsParam_TypeDef Param_ADC_IN_A_ON_State = { &INFO_A.Mode.EN, 0x7B, 1 };
+const SettingsParam_TypeDef Param_I2C_GPIO = { (uint8_t*)&gOSC_MODE.i2c_gpio_chip, 0x7B, 4 };
 //const SettingsParam_TypeDef Param_ADC_IN_B_ON_State = { &INFO_B.Mode.EN, 0x7D, 1 };
 
 
@@ -116,7 +116,7 @@ const SettingsParam_TypeDef* SettingsParams[PARAM_NUM] = {
 		&Param_ShowFFTFreq,
 		&Param_InterliveCorrectionCoeff,
 		&Param_oscNumPoints,
-//		&Param_ADC_IN_A_ON_State,
+		&Param_I2C_GPIO,
 //		&Param_ADC_IN_B_ON_State
 };
 

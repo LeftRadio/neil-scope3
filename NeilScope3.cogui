@@ -13,56 +13,89 @@
 <part id="0"/>
 <part id="1"/>
 <part id="2"/>
-<part id="3"/>
 <part id="4"/>
+<part id="3"/>
 <part id="5"/>
+<part id="6"/>
+<part id="7"/>
+<part id="8"/>
+<part id="9"/>
+<part id="10"/>
 </presentation>
 </folder>
 </info>
 </editorArea>
-<editor id="org.eclipse.cdt.ui.editor.CEditor" name="main.c" partName="main.c" path="C:/Projects/ARM/NeilScope3/main.c" title="main.c" tooltip="C:/Projects/ARM/NeilScope3/main.c" workbook="DefaultEditorWorkbook">
+<editor activePart="true" focus="true" id="org.eclipse.cdt.ui.editor.CEditor" name="main.c" partName="main.c" path="C:/Projects/ARM/NeilScope3/main.c" title="main.c" tooltip="C:/Projects/ARM/NeilScope3/main.c" workbook="DefaultEditorWorkbook">
 <input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/main.c"/>
-<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="2843" selectionTopPixel="990"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="3113" selectionTopPixel="1144"/>
 </editor>
-<editor id="org.eclipse.cdt.ui.editor.CEditor" name="defines.h" partName="defines.h" path="C:/Projects/ARM/NeilScope3/defines.h" title="defines.h" tooltip="C:/Projects/ARM/NeilScope3/defines.h" workbook="DefaultEditorWorkbook">
-<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/defines.h"/>
-<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="850" selectionTopPixel="45"/>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="i2c.c" partName="i2c.c" path="C:/Projects/ARM/NeilScope3/src/Drivers/I2C/i2c.c" title="i2c.c" tooltip="C:/Projects/ARM/NeilScope3/src/Drivers/I2C/i2c.c" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/Drivers/I2C/i2c.c"/>
+<editorState selectionHorizontalPixel="0" selectionLength="13" selectionOffset="3406" selectionTopPixel="780"/>
 </editor>
-<editor id="org.coocox.builder.ui.editors.ConfigEditor" name="" partName="Configuration" title="Configuration" tooltip="" workbook="DefaultEditorWorkbook">
-<input factoryID="org.coocox.builder.ui.persistent.PersistentElementFactory">
-<org.coocox.builder.ui.editors.ConfigEditor horizontalPosition="0" subTagIndex="2" verticalPosition="0"/>
-</input>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="i2c.h" partName="i2c.h" path="C:/Projects/ARM/NeilScope3/src/Drivers/I2C/i2c.h" title="i2c.h" tooltip="C:/Projects/ARM/NeilScope3/src/Drivers/I2C/i2c.h" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/Drivers/I2C/i2c.h"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="980" selectionTopPixel="0"/>
+</editor>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="i2c_gpio.h" partName="i2c_gpio.h" path="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/i2c_gpio.h" title="i2c_gpio.h" tooltip="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/i2c_gpio.h" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.h"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="1299" selectionTopPixel="143"/>
+</editor>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="i2c_gpio.c" partName="i2c_gpio.c" path="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/i2c_gpio.c" title="i2c_gpio.c" tooltip="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/i2c_gpio.c" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.c"/>
+<editorState selectionHorizontalPixel="0" selectionLength="16" selectionOffset="1599" selectionTopPixel="624"/>
+</editor>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="pca9675.c" partName="pca9675.c" path="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/pca9675.c" title="pca9675.c" tooltip="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/pca9675.c" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/ExHardware/I2C_GPIO/pca9675.c"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="2434" selectionTopPixel="946"/>
+</editor>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="pca9675.h" partName="pca9675.h" path="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/pca9675.h" title="pca9675.h" tooltip="C:/Projects/ARM/NeilScope3/src/ExHardware/I2C_GPIO/pca9675.h" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/ExHardware/I2C_GPIO/pca9675.h"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="1014" selectionTopPixel="0"/>
 </editor>
 <editor id="org.eclipse.cdt.ui.editor.CEditor" name="eeprom_WR_RD.c" partName="eeprom_WR_RD.c" path="C:/Projects/ARM/NeilScope3/src/ExHardware/eeprom_WR_RD.c" title="eeprom_WR_RD.c" tooltip="C:/Projects/ARM/NeilScope3/src/ExHardware/eeprom_WR_RD.c" workbook="DefaultEditorWorkbook">
 <input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/ExHardware/eeprom_WR_RD.c"/>
-<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="1174" selectionTopPixel="189"/>
+<editorState selectionHorizontalPixel="0" selectionLength="62" selectionOffset="1960" selectionTopPixel="351"/>
 </editor>
-<editor activePart="true" focus="true" id="org.eclipse.cdt.ui.editor.CEditor" name="Quick_Menu.c" partName="Quick_Menu.c" path="C:/Projects/ARM/NeilScope3/src/Interface/Quick_Menu.c" title="Quick_Menu.c" tooltip="C:/Projects/ARM/NeilScope3/src/Interface/Quick_Menu.c" workbook="DefaultEditorWorkbook">
-<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/Interface/Quick_Menu.c"/>
-<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="2128" selectionTopPixel="90"/>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="stm32f10x_it.c" partName="stm32f10x_it.c" path="C:/Projects/ARM/NeilScope3/src/stm32f10x_it.c" title="stm32f10x_it.c" tooltip="C:/Projects/ARM/NeilScope3/src/stm32f10x_it.c" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/stm32f10x_it.c"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="1352" selectionTopPixel="325"/>
 </editor>
-<editor id="org.eclipse.cdt.ui.editor.CEditor" name="Settings.c" partName="Settings.c" path="C:/Projects/ARM/NeilScope3/src/Settings.c" title="Settings.c" tooltip="C:/Projects/ARM/NeilScope3/src/Settings.c" workbook="DefaultEditorWorkbook">
-<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/Settings.c"/>
-<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="2076" selectionTopPixel="630"/>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="Host.c" partName="Host.c" path="C:/Projects/ARM/NeilScope3/src/Host.c" title="Host.c" tooltip="C:/Projects/ARM/NeilScope3/src/Host.c" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/Host.c"/>
+<editorState selectionHorizontalPixel="0" selectionLength="16" selectionOffset="3317" selectionTopPixel="1300"/>
+</editor>
+<editor id="org.eclipse.cdt.ui.editor.CEditor" name="init.c" partName="init.c" path="C:/Projects/ARM/NeilScope3/src/init.c" title="init.c" tooltip="C:/Projects/ARM/NeilScope3/src/init.c" workbook="DefaultEditorWorkbook">
+<input factoryID="org.eclipse.ui.part.FileEditorInputFactory" path="/NeilScope3/init.c"/>
+<editorState selectionHorizontalPixel="0" selectionLength="0" selectionOffset="15945" selectionTopPixel="1610"/>
 </editor>
 </editors>
 <views>
 <view id="org.eclipse.debug.ui.ExpressionView" partName="Expressions">
 <viewState>
-<ExpressionKeySet ExpKeys="crcBuff,pbuff,OUT_HostData,ResponseHeader,Control_CRC,ResponseCode,ResponseHeader,pData,crc_cntr,"/>
+<ExpressionKeySet ExpKeys="datatime,fillBar_CH1,fillBar_CH2,"/>
 </viewState>
 </view>
+<view id="org.eclipse.ui.views.ProgressView" partName="Progress">
+<viewState/>
+</view>
 <view id="org.coocox.builder.ui.views.ProjectView" partName="Project">
-<viewState CommonNavigator.LINKING_ENABLED="0" horizontalPosition="0" org.eclipse.ui.navigator.resources.workingSets.showTopLevelWorkingSets="0" verticalPosition="6">
+<viewState CommonNavigator.LINKING_ENABLED="0" horizontalPosition="0" org.eclipse.ui.navigator.resources.workingSets.showTopLevelWorkingSets="0" verticalPosition="7">
 <expanded>
 <element path="/NeilScope3"/>
+<element path="/NeilScope3/Drivers"/>
+<element path="/NeilScope3/Drivers/I2C"/>
 <element path="/NeilScope3/ExHardware"/>
-<element path="/NeilScope3/Interface"/>
+<element path="/NeilScope3/ExHardware/ESP_07"/>
+<element path="/NeilScope3/ExHardware/I2C_GPIO"/>
 </expanded>
 <selection>
-<element path="/NeilScope3/Interface/Quick_Menu.c"/>
+<element path="/NeilScope3/stm32f10x_it.c"/>
 </selection>
 </viewState>
+</view>
+<view id="org.eclipse.debug.ui.DebugView" partName="Debug">
+<viewState/>
 </view>
 <view id="org.eclipse.cdt.ui.callHierarchy" partName="Call Hierarchy">
 <viewState showFilesInLabels="false" variableFilter="false"/>
@@ -104,20 +137,13 @@
 <hide_toolbar_item_id id="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeAction"/>
 <hide_toolbar_item_id id="org.eclipse.ui.edit.text.toggleShowSelectedElementOnly"/>
 <hide_toolbar_item_id id="org.eclipse.debug.ui.commands.TerminateAndRelaunch"/>
+<view id="org.eclipse.ui.console.ConsoleView"/>
+<view id="org.eclipse.ui.views.ProgressView"/>
+<view id="org.coocox.builder.ui.views.ProjectView"/>
 <fastViewBars>
-<fastViewBar fastViewLocation="1024" id="org.eclipse.ui.internal.ViewStack@146f409" orientation="256" selectedTabId="org.eclipse.ui.console.ConsoleView" style="0">
-<fastViews>
-<view id="org.eclipse.ui.console.ConsoleView" ratio="0.3"/>
-</fastViews>
-</fastViewBar>
-<fastViewBar fastViewLocation="16384" id="org.eclipse.ui.internal.ViewStack@14153c4" orientation="512" selectedTabId="org.coocox.builder.ui.views.ProjectView" style="0">
-<fastViews>
-<view id="org.coocox.builder.ui.views.ProjectView" ratio="0.29923922"/>
-</fastViews>
-</fastViewBar>
 <fastViewBar fastViewLocation="1024" id="org.eclipse.ui.internal.ViewStack@1e41dcb" orientation="256" selectedTabId="org.eclipse.cdt.ui.callHierarchy" style="0">
 <fastViews>
-<view id="org.eclipse.cdt.ui.callHierarchy" ratio="0.2991453"/>
+<view id="org.eclipse.cdt.ui.callHierarchy" ratio="0.29891303"/>
 </fastViews>
 </fastViewBar>
 </fastViewBars>
@@ -158,16 +184,22 @@
 </folder>
 </info>
 <info part="org.eclipse.ui.editorss" ratio="0.44940478" ratioLeft="302" ratioRight="370" relationship="4" relative="org.eclipse.ui.internal.ViewStack@2005f0"/>
-<info folder="true" part="org.eclipse.ui.internal.ViewStack@146f409" ratio="0.6457399" ratioLeft="432" ratioRight="237" relationship="4" relative="org.eclipse.ui.editorss">
-<folder appearance="2" expanded="0">
-<page content="org.eclipse.ui.console.ConsoleView" label="LabelNotFound"/>
-<presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory"/>
+<info folder="true" part="org.eclipse.ui.internal.ViewStack@146f409" ratio="0.65211457" ratioLeft="478" ratioRight="255" relationship="4" relative="org.eclipse.ui.editorss">
+<folder activePageID="org.eclipse.ui.console.ConsoleView" appearance="2" expanded="2">
+<page content="org.eclipse.ui.console.ConsoleView" label="Console"/>
+<page content="org.eclipse.ui.views.ProgressView" label="Progress"/>
+<presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory">
+<part id="0"/>
+<part id="1"/>
+</presentation>
 </folder>
 </info>
 <info folder="true" part="org.eclipse.ui.internal.ViewStack@14153c4" ratio="0.3690476" ratioLeft="248" ratioRight="424" relationship="4" relative="org.eclipse.ui.internal.ViewStack@199ef99">
-<folder appearance="2" expanded="2">
-<page content="org.coocox.builder.ui.views.ProjectView" label="LabelNotFound"/>
-<presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory"/>
+<folder activePageID="org.coocox.builder.ui.views.ProjectView" appearance="2" expanded="2">
+<page content="org.coocox.builder.ui.views.ProjectView" label="Project"/>
+<presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory">
+<part id="0"/>
+</presentation>
 </folder>
 </info>
 </mainWindow>
@@ -219,44 +251,62 @@
 <hide_toolbar_item_id id="org.coocox.codebugger.configuration.coideProgramDownloadAction"/>
 <view id="org.eclipse.debug.ui.VariableView"/>
 <view id="org.eclipse.debug.ui.ExpressionView"/>
-<fastViewBars>&#x0A;<fastViewBar fastViewLocation="1024" id="org.eclipse.ui.internal.ViewStack@1285de9" orientation="256" selectedTabId="org.eclipse.debug.ui.DebugView" style="0">&#x0A;<fastViews>&#x0A;<view id="org.eclipse.ui.console.ConsoleView" ratio="0.2991453"/>
-<view id="org.eclipse.debug.ui.DebugView" ratio="0.2991453"/>
+<fastViewBars>
+<fastViewBar fastViewLocation="1024" id="org.eclipse.ui.internal.ViewStack@1285de9" orientation="256" selectedTabId="org.eclipse.debug.ui.DebugView" style="0">
+<fastViews>
+<view id="org.eclipse.ui.console.ConsoleView" ratio="0.29755434"/>
+<view id="org.eclipse.debug.ui.DebugView" ratio="0.29755434"/>
 <view id="org.eclipse.cdt.ui.callHierarchy" ratio="0.3"/>
 </fastViews>
 </fastViewBar>
-<fastViewBar fastViewLocation="16384" id="org.eclipse.ui.internal.ViewStack@1fe39a1" orientation="512" selectedTabId="org.coocox.builder.ui.views.ProjectView" style="0">&#x0A;<fastViews>&#x0A;<view id="org.coocox.builder.ui.views.ProjectView" ratio="0.29923922"/>
+<fastViewBar fastViewLocation="16384" id="org.eclipse.ui.internal.ViewStack@1fe39a1" orientation="512" selectedTabId="org.coocox.builder.ui.views.ProjectView" style="0">
+<fastViews>
+<view id="org.coocox.builder.ui.views.ProjectView" ratio="0.29923922"/>
 </fastViews>
 </fastViewBar>
 </fastViewBars>
 <viewLayoutRec closeable="false" id="org.eclipse.debug.ui.DebugView"/>
-<layout>&#x0A;<mainWindow>&#x0A;<info folder="true" part="org.eclipse.ui.internal.ViewStack@1fe39a1">&#x0A;<folder appearance="2" expanded="0">&#x0A;<page content="org.coocox.builder.ui.views.ProjectView" label="LabelNotFound"/>
+<layout>
+<mainWindow>
+<info folder="true" part="org.eclipse.ui.internal.ViewStack@1fe39a1">
+<folder appearance="2" expanded="0">
+<page content="org.coocox.builder.ui.views.ProjectView" label="LabelNotFound"/>
 <presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory"/>
 </folder>
 </info>
-<info folder="true" part="stickyFolderRight" ratio="0.75" ratioLeft="954" ratioRight="318" relationship="2" relative="org.eclipse.ui.internal.ViewStack@1fe39a1">&#x0A;<folder appearance="2" expanded="2">&#x0A;<page content="org.eclipse.help.ui.HelpView" label="LabelNotFound"/>
+<info folder="true" part="stickyFolderRight" ratio="0.75" ratioLeft="954" ratioRight="318" relationship="2" relative="org.eclipse.ui.internal.ViewStack@1fe39a1">
+<folder appearance="2" expanded="2">
+<page content="org.eclipse.help.ui.HelpView" label="LabelNotFound"/>
 <page content="org.eclipse.ui.internal.introview" label="LabelNotFound"/>
 </folder>
 </info>
-<info folder="true" part="org.eclipse.ui.internal.ViewStack@1285de9" ratio="0.7639485" ratioLeft="534" ratioRight="165" relationship="4" relative="org.eclipse.ui.internal.ViewStack@1fe39a1">&#x0A;<folder appearance="2" expanded="0">&#x0A;<page content="org.eclipse.ui.console.ConsoleView" label="LabelNotFound"/>
+<info folder="true" part="org.eclipse.ui.internal.ViewStack@1285de9" ratio="0.7639485" ratioLeft="534" ratioRight="165" relationship="4" relative="org.eclipse.ui.internal.ViewStack@1fe39a1">
+<folder appearance="2" expanded="0">
+<page content="org.eclipse.ui.console.ConsoleView" label="LabelNotFound"/>
 <page content="org.eclipse.debug.ui.DebugView" label="LabelNotFound"/>
 <page content="org.eclipse.cdt.ui.callHierarchy" label="LabelNotFound"/>
 <page content="org.eclipse.debug.ui.BreakpointView" label="LabelNotFound"/>
 <presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory"/>
 </folder>
 </info>
-<info folder="true" part="org.eclipse.ui.internal.ViewStack@12d8328" ratio="0.5" ratioLeft="636" ratioRight="636" relationship="2" relative="org.eclipse.ui.internal.ViewStack@1285de9">&#x0A;<folder appearance="2" expanded="2">&#x0A;<page content="org.coocox.codebugger.trace.ui.traceview" label="LabelNotFound"/>
+<info folder="true" part="org.eclipse.ui.internal.ViewStack@12d8328" ratio="0.5" ratioLeft="636" ratioRight="636" relationship="2" relative="org.eclipse.ui.internal.ViewStack@1285de9">
+<folder appearance="2" expanded="2">
+<page content="org.coocox.codebugger.trace.ui.traceview" label="LabelNotFound"/>
 <page content="org.eclipse.debug.ui.MemoryView" label="LabelNotFound"/>
 <page content="org.eclipse.cdt.debug.ui.memory.memorybrowser.MemoryBrowser" label="LabelNotFound"/>
 <presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory"/>
 </folder>
 </info>
-<info folder="true" part="org.eclipse.ui.internal.ViewStack@fdd25e" ratio="0.7627119" ratioLeft="900" ratioRight="280" relationship="2" relative="org.eclipse.ui.internal.ViewStack@1fe39a1">&#x0A;<folder activePageID="org.eclipse.debug.ui.ExpressionView" appearance="2" expanded="2">&#x0A;<page content="org.eclipse.debug.ui.VariableView" label="Variables"/>
+<info folder="true" part="org.eclipse.ui.internal.ViewStack@fdd25e" ratio="0.7627119" ratioLeft="900" ratioRight="280" relationship="2" relative="org.eclipse.ui.internal.ViewStack@1fe39a1">
+<folder activePageID="org.eclipse.debug.ui.ExpressionView" appearance="2" expanded="2">
+<page content="org.eclipse.debug.ui.VariableView" label="Variables"/>
 <page content="org.eclipse.debug.ui.ExpressionView" label="Expressions"/>
 <page content="org.eclipse.cdt.dsf.debug.ui.disassembly.view" label="LabelNotFound"/>
 <page content="org.eclipse.ui.views.ContentOutline" label="LabelNotFound"/>
 <page content="org.eclipse.debug.ui.RegisterView" label="LabelNotFound"/>
 <page content="org.coocox.coassistant.view.CoAssistantView_debug" label="LabelNotFound"/>
-<presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory">&#x0A;<part id="0"/>
+<presentation id="org.eclipse.ui.presentations.WorkbenchPresentationFactory">
+<part id="0"/>
 <part id="1"/>
 </presentation>
 </folder>
@@ -269,156 +319,165 @@
 <workingSets/>
 <navigationHistory>
 <editors>
-<editor factoryID="org.coocox.builder.ui.persistent.PersistentElementFactory" id="org.coocox.builder.ui.editors.ConfigEditor">
-<org.coocox.builder.ui.editors.ConfigEditor horizontalPosition="0" subTagIndex="2" verticalPosition="0"/>
-</editor>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/Settings.c"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/SettingsParams.h"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.h"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.c"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/ExHardware/I2C_GPIO/pca9675.c"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/main.c"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/init.c"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/stm32f10x_it.c"/>
 <editor factoryID="org.eclipse.cdt.ui.ExternalEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="C:\Projects\ARM\NeilScope3\main.h" project="NeilScope3"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/defines.h"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/Host.c"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/ExHardware/eeprom_WR_RD.c"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/systick/systick.c"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/Interface/gInterface_MENU.c"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/Interface/Quick_Menu.c"/>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/Settings.c"/>
 <editor factoryID="org.coocox.builder.ui.persistent.PersistentElementFactory" id="org.coocox.builder.ui.editors.ConfigEditor">
-<org.coocox.builder.ui.editors.ConfigEditor horizontalPosition="0" subTagIndex="2" verticalPosition="0"/>
+<org.coocox.builder.ui.editors.ConfigEditor/>
 </editor>
-<editor factoryID="org.coocox.builder.ui.persistent.PersistentElementFactory" id="org.coocox.builder.ui.editors.ConfigEditor">
-<org.coocox.builder.ui.editors.ConfigEditor horizontalPosition="0" subTagIndex="2" verticalPosition="0"/>
-</editor>
-<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/Interface/Quick_Menu.c"/>
+<editor factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" path="/NeilScope3/ExHardware/ESP_07/ns_esp_07.c"/>
 </editors>
-<item historyLabel="SettingsParams.h" index="2">
-<position info="not_deleted" x="4503" y="0"/>
+<item historyLabel="main.c" index="3">
+<position info="not_deleted" x="3115" y="0"/>
 </item>
-<item historyLabel="main.h" index="3">
-<position info="not_deleted" x="2536" y="2"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1096" y="0"/>
 </item>
-<item historyLabel="main.h" index="3">
-<position info="not_deleted" x="2524" y="0"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="975" y="19"/>
 </item>
-<item historyLabel="main.h" index="3">
-<position info="not_deleted" x="1013" y="13"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="423" y="21"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="3659" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1096" y="0"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="4788" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1143" y="0"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="855" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1187" y="13"/>
 </item>
-<item historyLabel="SettingsParams.h" index="2">
-<position info="not_deleted" x="4503" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1812" y="2"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="1117" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="417" y="0"/>
 </item>
-<item historyLabel="SettingsParams.h" index="2">
-<position info="not_deleted" x="5581" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1200" y="4"/>
 </item>
-<item historyLabel="Configuration" index="0"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="740" y="0"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="975" y="19"/>
 </item>
-<item historyLabel="Configuration" index="0"/>
-<item historyLabel="SettingsParams.h" index="2">
-<position info="not_deleted" x="5581" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1200" y="4"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="1117" y="0"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="975" y="19"/>
 </item>
-<item historyLabel="Host.c" index="5">
-<position info="not_deleted" x="6903" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1095" y="0"/>
 </item>
-<item historyLabel="SettingsParams.h" index="2">
-<position info="not_deleted" x="5572" y="0"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="975" y="19"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="1117" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1095" y="0"/>
 </item>
-<item historyLabel="Configuration" index="0"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="640" y="0"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="975" y="19"/>
 </item>
-<item historyLabel="Settings.c" index="1">
-<position info="not_deleted" x="1117" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1095" y="0"/>
 </item>
-<item historyLabel="Configuration" index="0"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="645" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="1200" y="4"/>
 </item>
-<item historyLabel="Configuration" index="0"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="790" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="989" y="0"/>
 </item>
-<item historyLabel="Configuration" index="0"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="790" y="0"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="2434" y="0"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="3079" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1232" y="32"/>
 </item>
-<item historyLabel="systick.c" index="7">
-<position info="not_deleted" x="2485" y="21"/>
+<item historyLabel="pca9675.c" index="2">
+<position info="not_deleted" x="2434" y="0"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="2882" y="21"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="975" y="19"/>
 </item>
-<item historyLabel="gInterface_MENU.c" index="8">
-<position info="not_deleted" x="0" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1232" y="32"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="2882" y="21"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="792" y="13"/>
 </item>
-<item historyLabel="Quick_Menu.c" index="9">
-<position info="not_deleted" x="3317" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1259" y="0"/>
 </item>
-<item historyLabel="Settings.c" index="10">
-<position info="not_deleted" x="2216" y="15"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1421" y="0"/>
 </item>
-<item historyLabel="Settings.c" index="10">
-<position info="not_deleted" x="2290" y="0"/>
+<item historyLabel="stm32f10x_it.c" index="5">
+<position info="not_deleted" x="1352" y="0"/>
 </item>
-<item historyLabel="Settings.c" index="10">
-<position info="not_deleted" x="2076" y="0"/>
+<item historyLabel="main.h" index="6">
+<position info="not_deleted" x="4934" y="10"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="2734" y="12"/>
+<item historyLabel="stm32f10x_it.c" index="5">
+<position info="not_deleted" x="1352" y="0"/>
 </item>
-<item historyLabel="Quick_Menu.c" index="9">
-<position info="not_deleted" x="3472" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1421" y="0"/>
 </item>
-<item historyLabel="Settings.c" index="10">
-<position info="not_deleted" x="2076" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="421" y="0"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="2734" y="12"/>
+<item historyLabel="Configuration" index="7"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="421" y="0"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="3533" y="0"/>
+<item historyLabel="init.c" index="4">
+<position info="not_deleted" x="15945" y="0"/>
 </item>
-<item historyLabel="eeprom_WR_RD.c" index="6">
-<position info="not_deleted" x="1174" y="0"/>
+<item historyLabel="main.c" index="3">
+<position info="not_deleted" x="3117" y="0"/>
 </item>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="794" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="421" y="0"/>
 </item>
-<item historyLabel="Configuration" index="11"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="878" y="0"/>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="885" y="8"/>
 </item>
-<item historyLabel="Configuration" index="11"/>
-<item historyLabel="defines.h" index="4">
-<position info="not_deleted" x="850" y="0"/>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1624" y="0"/>
 </item>
-<item historyLabel="Configuration" index="11"/>
-<item historyLabel="Configuration" index="12"/>
-<item active="true" historyLabel="Quick_Menu.c" index="13">
-<position info="not_deleted" x="3472" y="0"/>
+<item historyLabel="main.c" index="3">
+<position info="not_deleted" x="3183" y="0"/>
+</item>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="1346" y="39"/>
+</item>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1624" y="0"/>
+</item>
+<item historyLabel="main.c" index="3">
+<position info="not_deleted" x="2629" y="0"/>
+</item>
+<item historyLabel="ns_esp_07.c" index="8">
+<position info="not_deleted" x="1368" y="0"/>
+</item>
+<item historyLabel="main.c" index="3">
+<position info="not_deleted" x="2629" y="0"/>
+</item>
+<item historyLabel="main.c" index="3">
+<position info="not_deleted" x="3113" y="0"/>
+</item>
+<item historyLabel="i2c_gpio.c" index="1">
+<position info="not_deleted" x="1599" y="16"/>
+</item>
+<item historyLabel="i2c_gpio.h" index="0">
+<position info="not_deleted" x="1299" y="0"/>
+</item>
+<item active="true" historyLabel="main.c" index="3">
+<position info="not_deleted" x="3113" y="0"/>
 </item>
 </navigationHistory>
 <input factoryID="org.eclipse.ui.internal.model.ResourceFactory" path="/" type="8"/>
@@ -427,50 +486,52 @@
 <actionBarAdvisor/>
 </window>
 <mruList>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="EPM570_Registers.c" tooltip="NeilScope3/ExHardware/EPM570/EPM570_Registers.c">
-<persistable path="/NeilScope3/ExHardware/EPM570/EPM570_Registers.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="ns_esp_07.c" tooltip="NeilScope3/ExHardware/ESP_07/ns_esp_07.c">
+<persistable path="/NeilScope3/ExHardware/ESP_07/ns_esp_07.c"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Processing_and_output.c" tooltip="NeilScope3/Processing_and_output.c">
-<persistable path="/NeilScope3/Processing_and_output.c"/>
+<file factoryID="org.coocox.builder.ui.persistent.PersistentElementFactory" id="org.coocox.builder.ui.editors.ConfigEditor" name="" tooltip="">
+<persistable>
+<org.coocox.builder.ui.editors.ConfigEditor/>
+</persistable>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="main.c" tooltip="NeilScope3/main.c">
-<persistable path="/NeilScope3/main.c"/>
+<file factoryID="org.eclipse.cdt.ui.ExternalEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="main.h" tooltip="C:\Projects\ARM\NeilScope3\main.h">
+<persistable path="C:\Projects\ARM\NeilScope3\main.h" project="NeilScope3"/>
 </file>
-<file factoryID="org.eclipse.cdt.ui.ExternalEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="User_Interface.h" tooltip="C:\Projects\ARM\NeilScope3\inc\User_Interface.h">
-<persistable path="C:\Projects\ARM\NeilScope3\inc\User_Interface.h" project="NeilScope3"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="stm32f10x_gpio.h" tooltip="NeilScope3/stm_lib/inc/stm32f10x_gpio.h">
+<persistable path="/NeilScope3/stm_lib/inc/stm32f10x_gpio.h"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="User_Interface.c" tooltip="NeilScope3/Interface/User_Interface.c">
-<persistable path="/NeilScope3/Interface/User_Interface.c"/>
-</file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="ChannelsMenu.c" tooltip="NeilScope3/Interface/ChannelsMenu.c">
-<persistable path="/NeilScope3/Interface/ChannelsMenu.c"/>
-</file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Settings.c" tooltip="NeilScope3/Settings.c">
-<persistable path="/NeilScope3/Settings.c"/>
-</file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="gInterface_MENU.c" tooltip="NeilScope3/Interface/gInterface_MENU.c">
-<persistable path="/NeilScope3/Interface/gInterface_MENU.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="init.c" tooltip="NeilScope3/init.c">
+<persistable path="/NeilScope3/init.c"/>
 </file>
 <file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Host.c" tooltip="NeilScope3/Host.c">
 <persistable path="/NeilScope3/Host.c"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="defines.h" tooltip="NeilScope3/defines.h">
-<persistable path="/NeilScope3/defines.h"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="stm32f10x_it.c" tooltip="NeilScope3/stm32f10x_it.c">
+<persistable path="/NeilScope3/stm32f10x_it.c"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Quick_Menu.c" tooltip="NeilScope3/Interface/Quick_Menu.c">
-<persistable path="/NeilScope3/Interface/Quick_Menu.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="eeprom_WR_RD.c" tooltip="NeilScope3/ExHardware/eeprom_WR_RD.c">
+<persistable path="/NeilScope3/ExHardware/eeprom_WR_RD.c"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Trig_Menu.c" tooltip="NeilScope3/Interface/Trig_Menu.c">
-<persistable path="/NeilScope3/Interface/Trig_Menu.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="pca9675.h" tooltip="NeilScope3/ExHardware/I2C_GPIO/pca9675.h">
+<persistable path="/NeilScope3/ExHardware/I2C_GPIO/pca9675.h"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Settings.c" tooltip="NeilScope3/Settings.c">
-<persistable path="/NeilScope3/Settings.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="pca9675.c" tooltip="NeilScope3/ExHardware/I2C_GPIO/pca9675.c">
+<persistable path="/NeilScope3/ExHardware/I2C_GPIO/pca9675.c"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Quick_Menu.c" tooltip="NeilScope3/Interface/Quick_Menu.c">
-<persistable path="/NeilScope3/Interface/Quick_Menu.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="EPM570_GPIO.h" tooltip="NeilScope3/ExHardware/EPM570/EPM570_GPIO.h">
+<persistable path="/NeilScope3/ExHardware/EPM570/EPM570_GPIO.h"/>
 </file>
-<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="init.c" tooltip="NeilScope3/init.c">
-<persistable path="/NeilScope3/init.c"/>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="ns_esp_07.h" tooltip="NeilScope3/ExHardware/ESP_07/ns_esp_07.h">
+<persistable path="/NeilScope3/ExHardware/ESP_07/ns_esp_07.h"/>
+</file>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="i2c_gpio.c" tooltip="NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.c">
+<persistable path="/NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.c"/>
+</file>
+<file factoryID="org.eclipse.ui.part.FileEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="i2c_gpio.h" tooltip="NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.h">
+<persistable path="/NeilScope3/ExHardware/I2C_GPIO/i2c_gpio.h"/>
+</file>
+<file factoryID="org.eclipse.cdt.ui.ExternalEditorInputFactory" id="org.eclipse.cdt.ui.editor.CEditor" name="Settings.h" tooltip="C:\Projects\ARM\NeilScope3\inc\Settings.h">
+<persistable path="C:\Projects\ARM\NeilScope3\inc\Settings.h" project="NeilScope3"/>
 </file>
 </mruList>
 </workbench>

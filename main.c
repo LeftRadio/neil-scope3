@@ -20,6 +20,7 @@
 #include "Processing_and_output.h"
 #include "Host.h"
 #include "IQueue.h"
+#include "i2c_gpio.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -42,8 +43,10 @@ __IO OscMode_TypeDef gOSC_MODE =
 	OFF,				// Automeasurments state
 	PWR_S_DISABLE,		// Power save mode state
 	BCKL_MAX,
-	TRUE,				// Beeper state
-	RUN					// Work state
+	(void*)0,			// Pointer fo external i2c ports chip
+	ENABLE,				// Beeper state
+	RUN,				// Work state
+	FALSE				// Configure state
 };
 
 /*  */
@@ -84,6 +87,7 @@ extern FlagStatus ADC_Ready(void);
 void setCondition(uint8_t RUN_HOLD);
 void (*pMNU)(void) = Change_Menu_Indx;     /* указатель на функцию меню */
 
+uint16_t portData = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private Functions --------------------------------------------------------*/
@@ -100,10 +104,34 @@ int main(void)
 	/* Init internal and external peripheal */
 	Global_Init();
 
-	/* Oscillocope run in autonome mode */
-	Switch_To_AutoMode();
+	/* Init and verify external peripheal */
+	External_Peripheral_Init();
 
+	/* Load preference from EEPROM */
+	LoadPreference();
+
+	/* Config external I2C GPIO */
+	I2CIO_Configuration(gOSC_MODE.i2c_gpio_chip);
+
+	/* Draw main interface */
+	Draw_Interface();
+
+	/* other */
+	EPM570_Set_LA_RLE_State(DISABLE);
+	GPIOC->BRR = GPIO_Pin_13;
+
+	gOSC_MODE.Configurated = TRUE;
+
+	NVIC_EnableIRQ(RTC_IRQn);
 	__enable_irq();
+
+
+	//	I2CIO_Write_Pin(GPIO_Pin_0, 0);
+	//	portData = I2CIO_Read_Pin(GPIO_Pin_0);
+	//	I2CIO_Write_Port(0xFF0F);
+	//	portData = I2CIO_Read_Pin(GPIO_Pin_0);
+	//	I2CIO_Read_Port(&portData);
+
 
 	/* Main work */
 	while(1)
@@ -113,33 +141,8 @@ int main(void)
 		if(gOSC_MODE.PowerSave == PWR_S_ENABLE)	__WFI();
 #endif
 
-		if(Host_IQueue_Get_CommandsCount() > 0)
-		{
-			if(Host_IQueue_GetReadStatus((uint8_t*)&IQueue_WorkIndex) == TRUE)
-			{
-#ifdef __MAIN_C_HOST_DEBUG__
-				if(HostMode == ENABLE)
-				{
-					IQueue_TypeDef *IQueue = Host_GetIQueue(IQueue_WorkIndex);
-					uint32_t c = Host_IQueue_Get_CommandsCount();
-
-					ConvertToString(IQueue->Data[1], DBG_CMD, 3);
-					ConvertToString(IQueue->CMD_Length, DBG_LEN, 3);
-					ConvertToString(c, DBG_CNT, 2);
-					if(IQueue_CommandCount_MAX < c) IQueue_CommandCount_MAX = c;
-					ConvertToString(IQueue_CommandCount_MAX, DBG_CNT_MAX, 2);
-
-					LCD_SetTextColor(White);
-					LCD_PutStrig(5, 110, 0, DBG_CMD);
-					LCD_PutStrig(5, 95, 0, DBG_LEN);
-					LCD_PutStrig(5, 80, 0, DBG_CNT);
-					LCD_PutStrig(5, 65, 0, DBG_CNT_MAX);
-
-					SuccessWorkedCommand += c;
-					ConvertToString(SuccessWorkedCommand, DBG_ALL_CNT, 5);
-					LCD_PutStrig(5, 45, 0, DBG_ALL_CNT);
-				}
-#endif
+		if(Host_IQueue_Get_CommandsCount() > 0)	{
+			if(Host_IQueue_GetReadStatus((uint8_t*)&IQueue_WorkIndex) == TRUE) {
 				Recive_Host_Data(IQueue_WorkIndex);
 				Host_IQueue_Clear(IQueue_WorkIndex);
 				Host_IQueue_SetCommandCount(-1);
@@ -251,4 +254,6 @@ void setCondition(State_TypeDef NewState)
 
 
 
-
+/*********************************************************************************************************
+      END FILE
+*********************************************************************************************************/

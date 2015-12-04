@@ -23,6 +23,8 @@
 #include "User_Interface.h"
 #include "RTC.h"
 #include "IQueue.h"
+#include "i2c_gpio.h"
+#include "pca9675.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -41,12 +43,12 @@ static void ExHardware_Init_ERROR(void);
 
 
 /* Functions ----------------------------------------------------------------*/
-/*******************************************************************************
-* Function Name  : Init_GPIO
-* Description    : Инициализация портов
-* Input          : None
-* Return         : None
-*******************************************************************************/
+
+/**
+ * @brief  Init_GPIO
+ * @param  None
+ * @retval None
+ */
 static void Init_GPIO(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -88,6 +90,14 @@ static void Init_GPIO(void)
 	GPIO_InitStructure.GPIO_Mode   = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 
+	/* Init USB host active input */
+	GPIO_InitStructure.GPIO_Pin    = GPIO_Pin_8;	       // HostActive PORTA.8
+	GPIO_InitStructure.GPIO_Speed  = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode   = GPIO_Mode_Out_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+
+
 #ifndef __SWD_DEBUG__
 	/*  Init Inerlive & HC573_LE GPIO */
 	GPIO_InitStructure.GPIO_Pin    = GPIO_Pin_13 | GPIO_Pin_14;
@@ -97,13 +107,11 @@ static void Init_GPIO(void)
 #endif
 }
 
-
-/*******************************************************************************
-* Function Name  : Timer1_init
-* Description    : Инициализация таймера 1, для генерации преобразования АЦП, подсчет кадров
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Timer1, used for ADC sampling and FPS counting
+ * @param  None
+ * @retval None
+ */
 static void Timer1_init(void)
 {
 	RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;		// разрешаем татирование модуля
@@ -117,13 +125,11 @@ static void Timer1_init(void)
 	NVIC_SetPriority(TIM1_UP_IRQn, 10);
 }
 
-
-/*******************************************************************************
-* Function Name  : Timer2_init
-* Description    : Инициализация таймера 2, для опроса кнопок по прерыванию
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Timer2, used for buttons read interrupt
+ * @param  None
+ * @retval None
+ */
 static void Timer2_init(void)
 { 	
 	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;			// разрешаем татирование модуля
@@ -137,13 +143,11 @@ static void Timer2_init(void)
 	NVIC_SetPriority(TIM2_IRQn, 14);	
 }
 
-
-/*******************************************************************************
-* Function Name  : Timer3_init
-* Description    : Инициализация таймера 3, ШИМ, смещение лучей
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Timer3, used for generate PWM (offset analog channels)
+ * @param  None
+ * @retval None
+ */
 static void Timer3_init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -192,13 +196,11 @@ static void Timer3_init(void)
 	TIM_Cmd(TIM3, ENABLE);
 }
 
-
-/*******************************************************************************
-* Function Name  : Beep_Timer_Init
-* Description    : Инициализация таймера 4 beeper
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Beep_Timer, used for 'beep' sounds
+ * @param  None
+ * @retval None
+ */
 static void Beep_Timer4_Init(void)
 {
 	RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;			// разрешаем татирование модуля
@@ -212,13 +214,11 @@ static void Beep_Timer4_Init(void)
 	NVIC_SetPriority(TIM4_IRQn, 12);
 }
 
-
-/*******************************************************************************
-* Function Name  : I2C_Configuration
-* Description    : Инициализация I2C
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  I2C, used for EEPROM
+ * @param  None
+ * @retval None
+ */
 static void I2C_Configuration(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -257,13 +257,11 @@ static void I2C_Configuration(void)
 	NVIC_SetPriority(I2C1_ER_IRQn, 13);
 }
 
-
-/*******************************************************************************
-* Function Name  : ADC_Configuration
-* Description    : Инициализация АЦП
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  ADC, used for measurment VBatt
+ * @param  None
+ * @retval None
+ */
 static void ADC_Configuration(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -309,13 +307,11 @@ static void ADC_Configuration(void)
     NVIC_SetPriority(ADC1_2_IRQn, 15);
 }
 
-
-/*******************************************************************************
-* Function Name  : USART_Config
-* Description    : configuration USART periph
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  USART, used for host comunication
+ * @param  None
+ * @retval None
+ */
 static void USART_Config(void)
 {
 	USART_InitTypeDef USART_InitStructure;
@@ -364,13 +360,11 @@ static void USART_Config(void)
 	DMA_Cmd(DMA1_Channel5, ENABLE);
 }
 
-
-/*******************************************************************************
-* Function Name  : USART_DMA_Configuration
-* Description    : configuration DMA USART periph
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  USART_DMA, used for host comunication, transfer data
+ * @param  None
+ * @retval None
+ */
 static void USART_DMA_DefaultConfiguration(void)
 {
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
@@ -397,13 +391,11 @@ static void USART_DMA_DefaultConfiguration(void)
 	NVIC_SetPriority(DMA1_Channel5_IRQn, 0);
 }
 
-
-/*******************************************************************************
-* Function Name  : LCD_PinsInit
-* Description    : Инициализация портов под ЖК
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  LCD_PinsInit, init GPIO for LCD comunication
+ * @param  None
+ * @retval None
+ */
 static void LCD_PinsInit(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -434,13 +426,12 @@ static void LCD_PinsInit(void)
 #endif
 }
 
-
-/*******************************************************************************
-* Function Name  : EPM570_Init
-* Description    : Инициализация портов под связь с EPM570 и инициализация регистрв ПЛИС
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  EPM570_Init, init GPIO for EPM570 comunication,
+ * 		   verify and write default values to EPM registers
+ * @param  None
+ * @retval None
+ */
 static void EPM570_Init(void)
 {
 	EPM_ErrorStatus regInit;
@@ -481,13 +472,11 @@ static void EPM570_Init(void)
 	LCD_PutColorStrig(Xstr, 150, 0, "write/read cycle SRAM...", White);
 }
 
-
-/*******************************************************************************
-* Function Name  : ExHardwareInitERROR
-* Description    : ExHardwareInitERROR
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  ExHardware_Init_ERROR
+ * @param  None
+ * @retval None
+ */
 static void ExHardware_Init_ERROR(void)
 {
 	while(1)
@@ -500,18 +489,17 @@ static void ExHardware_Init_ERROR(void)
 	}
 }
 
-
-
-/*******************************************************************************
-* Function Name  : Global_Init
-* Description    : Фунцкия глобальной инициализации МК
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Global_Init
+ * @param  None
+ * @retval None
+ */
 void Global_Init(void)
-{   
+{
 	Init_GPIO();
 	RTC_User_Init();
+	delay_init();
+
 	ADC_Configuration();			// ADC configuration
 	Timer1_init();
 	Timer2_init();
@@ -522,17 +510,14 @@ void Global_Init(void)
 	Host_IQueue_Initialization();
 	USART_DMA_DefaultConfiguration();
 
-	delay_init();
 //	if(ON_OFF_button == 0) GPIOC->BRR = GPIO_Pin_15;
 }
 
-
-/*******************************************************************************
-* Function Name  : External_Peripheral_Init
-* Description    : Инициализация внешней периферии
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  External_Peripheral_Init
+ * @param  None
+ * @retval None
+ */
 void External_Peripheral_Init(void)
 {  
 	/* LCD pins & controller Init */
@@ -568,16 +553,14 @@ void External_Peripheral_Init(void)
 	
 	Beep_Start();
 	delay_ms(500);
+
 }
 
-
-
-/*******************************************************************************
-* Function Name  : Start_Bootloader
-* Description    :
-* Input          : None
-* Return         : None
-*******************************************************************************/
+/**
+ * @brief  Start_Bootloader
+ * @param  None
+ * @retval None
+ */
 void Start_Bootloader(void)
 {
 	uint16_t X = 0;

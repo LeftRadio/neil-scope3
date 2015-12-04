@@ -112,6 +112,18 @@ typedef struct
 
 } CH_INFO_TypeDef;
 
+/* */
+typedef struct {
+	uint8_t i2c_address;
+
+	void (*Configuration)(void);
+	void (*Write_Pin)(uint32_t pin, uint8_t state);
+	void (*Write_Port)(uint32_t val);
+	uint8_t (*Read_Pin)(uint32_t pin);
+	void (*Read_Port)(void* data);
+
+} NS_I2C_GPIO_TypeDef;
+
 
 /* Global device work mode/state struct  */
 typedef struct
@@ -123,8 +135,10 @@ typedef struct
 	Boolean  autoMeasurments;
 	PwrSaveState_Typedef PowerSave;
 	BcklightState_Typedef BackLight;
+	NS_I2C_GPIO_TypeDef* i2c_gpio_chip;
 	FunctionalState BeepState;
 	State_TypeDef  State;
+	Boolean Configurated;
 
 } OscMode_TypeDef;
 

@@ -342,49 +342,42 @@ void TIM4_IRQHandler(void)
   */
 void I2C1_ER_IRQHandler(void)
 {
-	Error_message("I2C Bus ERROR");   
-	LCD_PutStrig(20, 160, 0, "Push button OK for continue");
-	while(EPM570_Read_Keys() != OK);
-	
-	LCD_SetTextColor(0x0000);   
-	LCD_PutStrig(20, 160, 0, "Push button OK for continue");
-	LCD_DrawGrid(&activeAreaGrid, DRAW); // перерисовываем сетку в области осциллограмм
-
 	/* Check on I2C2 SMBALERT flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_SMBALERT))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_SMBALERT))	{
 		I2C_ClearITPendingBit(I2C1, I2C_IT_SMBALERT);
 	}
 	/* Check on I2C2 Time out flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_TIMEOUT))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_TIMEOUT)) {
 		I2C_ClearITPendingBit(I2C1, I2C_IT_TIMEOUT);
 	}
 	/* Check on I2C2 Arbitration Lost flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_ARLO))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_ARLO))	{
 		I2C_ClearITPendingBit(I2C1, I2C_IT_ARLO);
 	}	
 	/* Check on I2C2 PEC error flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_PECERR))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_PECERR)) {
 		I2C_ClearITPendingBit(I2C1, I2C_IT_PECERR);
 	} 
 	/* Check on I2C2 Overrun/Underrun error flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_OVR))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_OVR)) {
 		I2C_ClearITPendingBit(I2C1, I2C_IT_OVR);
 	} 
 	/* Check on I2C2 Acknowledge failure error flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_AF))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_AF)) {
 		I2C_ClearITPendingBit(I2C1, I2C_IT_AF);
 	}
 	/* Check on I2C2 Bus error flag and clear it */
-	if (I2C_GetITStatus(I2C1, I2C_IT_BERR))
-	{
+	if (I2C_GetITStatus(I2C1, I2C_IT_BERR)) {
 		I2C_ClearITPendingBit(I2C1, I2C_IT_BERR);
 	}
+
+//	Error_message("I2C Bus ERROR");
+//	LCD_PutStrig(20, 160, 0, "Push button OK for continue");
+//	while(EPM570_Read_Keys() != OK);
+//
+//	LCD_SetTextColor(0x0000);
+//	LCD_PutStrig(20, 160, 0, "Push button OK for continue");
+//	LCD_DrawGrid(&activeAreaGrid, DRAW); // перерисовываем сетку в области осциллограмм
 }
 
 

@@ -12,6 +12,7 @@ Comments    :
 #define __USER_INTERFACE_H 
 
 /* Includes ------------------------------------------------------------------*/	   
+#include "main.h"
 #include "Trig_Menu.h"
 #include "TimeScale_Menu.h"
 #include "colors 5-6-5.h"

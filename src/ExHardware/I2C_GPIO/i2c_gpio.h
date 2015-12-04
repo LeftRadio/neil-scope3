@@ -1,46 +1,36 @@
 /**
   ******************************************************************************
-  * @file	 	defines.h
+  * @file	 	i2c_gpio.h
   * @author  	Left Radio
-  * @version
+  * @version	1.0.0
   * @date
   * @brief		header
   ******************************************************************************
 **/
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef _DEFINES__H
-#define _DEFINES__H
+#ifndef __NS_I2C_GPIO__H
+#define __NS_I2C_GPIO__H
 
 /* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
 /* Exported define -----------------------------------------------------------*/
-#define __FIRMWARE_VERSION__			(uint8_t)(57)
-#define __FIRMWARE_REVISION__			"C"
-
-/* Debug defines */
-//#define __MAIN_C_HOST_DEBUG__
-//#define __HOST_DEBUG__
- #define __SWD_DEBUG__
-//#define __VAR_DEBUG__
- #define __POWER_BUTTON_OFF__
-
-/* LCD options defines */
-//#define __LCD_16_BIT__
-#define __LCD_18_BIT__
-//#define __LCD_HC573__
-
-
-
 /* Exported macro ------------------------------------------------------------*/
 /* Exported typedef ----------------------------------------------------------*/
 /* Exported variables --------------------------------------------------------*/
+extern NS_I2C_GPIO_TypeDef pca9675;
+
 /* Exported function ---------------------------------------------------------*/
+void I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio);
+void I2CIO_Write_Pin(uint32_t pin, uint8_t state);
+void I2CIO_Write_Port(uint32_t val);
+uint8_t I2CIO_Read_Pin(uint32_t pin);
+void I2CIO_Read_Port(uint16_t *data);
 
 
 
-
-
-#endif /* _DEFINES__H */
+#endif /* __NS_I2C_GPIO__H */
 /*********************************************************************************************************
       END FILE
 *********************************************************************************************************/
