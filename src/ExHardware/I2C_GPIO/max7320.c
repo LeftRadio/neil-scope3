@@ -12,7 +12,7 @@
 #include "stm32f10x.h"
 #include "i2c.h"
 #include "i2c_gpio.h"
-#include "pca9675.h"
+#include "max7320.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -25,8 +25,8 @@ static int8_t read_pin(uint32_t pin);
 static int8_t read_port(void *data);
 
 /* Private variables ---------------------------------------------------------*/
-NS_I2C_GPIO_TypeDef pca9675 = {
-		0x42,
+NS_I2C_GPIO_TypeDef max7320 = {
+		0xB0,
 
 		configuration,
 		write_pin,
@@ -57,18 +57,18 @@ static int8_t configuration(void)
  */
 static int8_t write_pin(uint32_t pin, uint8_t state)
 {
-	uint8_t write_data[3];
-	uint16_t read_data;
+	uint8_t read_data;
 
 	read_port(&read_data);
 
-	read_data &= ~pin;
-	read_data |= state;
+	if(state) {
+		read_data |= (uint8_t)pin;
+	}
+	else {
+		read_data &= (uint8_t)(~pin);
+	}
 
-	write_data[0] = (uint8_t)read_data;
-	write_data[1] = (uint8_t)((read_data & 0xFF00) >> 8);
-
-	return I2C_Write_Bytes(write_data, 2, pca9675.i2c_address);
+	return I2C_Write_Bytes(&read_data, 1, max7320.i2c_address);
 }
 
 /**
@@ -78,12 +78,8 @@ static int8_t write_pin(uint32_t pin, uint8_t state)
  */
 static int8_t write_port(uint32_t val)
 {
-	uint8_t write_data[3];
-
-	write_data[0] = (uint8_t)val;
-	write_data[1] = (uint8_t)((val & 0xFF00) >> 8);
-
-	return I2C_Write_Bytes(write_data, 2, pca9675.i2c_address);
+	uint8_t write_data = (uint8_t)val;
+	return I2C_Write_Bytes(&write_data, 1, max7320.i2c_address);
 }
 
 /**
@@ -93,7 +89,7 @@ static int8_t write_port(uint32_t val)
  */
 static int8_t read_pin(uint32_t pin)
 {
-	uint16_t read_data;
+	uint8_t read_data = 0;
 
 	if (read_port(&read_data) == -1) {
 		return -1;
@@ -113,5 +109,5 @@ static int8_t read_pin(uint32_t pin)
  */
 static int8_t read_port(void *data)
 {
-	return I2C_Read_Bytes((uint8_t*)data, 2, pca9675.i2c_address);
+	return I2C_Read_Bytes((uint8_t*)data, 1, max7320.i2c_address);
 }

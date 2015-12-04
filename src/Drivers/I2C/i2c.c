@@ -37,7 +37,7 @@ void Error_message(char* message_text);
  * @param  None
  * @retval None
  */
-void I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
+int8_t I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
 {
     uint32_t sEETimeout = sEE_LONG_TIMEOUT;
     uint8_t i;
@@ -46,14 +46,20 @@ void I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
 	// генерация старт на шине
 	I2C_GenerateSTART(I2C1, ENABLE);
 	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT)) {
-    	if((sEETimeout--) == 0)	{ Error_message("I2C Timeout Generate START");	return;	}
+    	if((sEETimeout--) == 0)	{
+    		Error_message("I2C Timeout Generate START");
+    		return -1;
+    	}
   	}
 
 	// передача адреса
 	sEETimeout = sEE_LONG_TIMEOUT;
 	I2C_Send7bitAddress(I2C1, i2c_address, I2C_Direction_Transmitter);
 	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED )) {
-    	if((sEETimeout--) == 0)	{ Error_message("I2C Timeout Send7bitAddress");	return;	}
+    	if((sEETimeout--) == 0)	{
+    		Error_message("I2C Timeout Send7bitAddress");
+    		return -1;
+    	}
   	}
 
 	for(i = 0; i < len; i++) {
@@ -61,11 +67,16 @@ void I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
 
 		I2C_SendData(I2C1, *(Data+i));
 		while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED )) {
-			if((sEETimeout--) == 0)	{ Error_message("I2C Timeout Send MSB address");	return;	}
+			if((sEETimeout--) == 0)	{
+				Error_message("I2C Timeout Send MSB address");
+				return - 1;
+			}
 		}
 	}
 
 	I2C_GenerateSTOP(I2C1, ENABLE);
+
+	return 0;
 }
 
 /**
@@ -73,7 +84,7 @@ void I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
  * @param  None
  * @retval None
  */
-void I2C_Read_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
+int8_t I2C_Read_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
 {
 	uint32_t sEETimeout = sEE_LONG_TIMEOUT;
     uint8_t i;
@@ -82,14 +93,20 @@ void I2C_Read_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
 	//генерация старт на шине
 	I2C_GenerateSTART(I2C1, ENABLE);
 	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT)) {
-    	if(sEETimeout-- == 0)	{ Error_message("I2C Timeout Generate START");	return;	}
+    	if(sEETimeout-- == 0) {
+    		Error_message("I2C Timeout Generate START");
+    		return - 1;
+    	}
   	}
 
 	/* передача EEPROM адреса I2C */
 	sEETimeout = sEE_LONG_TIMEOUT;
 	I2C_Send7bitAddress(I2C1, i2c_address, I2C_Direction_Receiver);
 	while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED)) {
-    	if(sEETimeout-- == 0)	{ Error_message("I2C Timeout Send7bitAddress");	return;	}
+    	if(sEETimeout-- == 0) {
+    		Error_message("I2C Timeout Send7bitAddress");
+    		return - 1;
+    	}
   	}
 
 	/* прием данных */
@@ -97,12 +114,18 @@ void I2C_Read_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address)
 		sEETimeout = sEE_LONG_TIMEOUT;
 
 		while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED )) {
-			if(sEETimeout-- == 0)	{ Error_message("I2C Timeout ReceiveData");	return;	}
+			if(sEETimeout-- == 0) {
+				Error_message("I2C Timeout ReceiveData");
+				return - 1;
+			}
 		}
+
 		*(Data + i) = I2C_ReceiveData(I2C1);
 	}
 
 	I2C_GenerateSTOP(I2C1, ENABLE);
+
+	return 0;
 }
 
 /**

@@ -20,12 +20,13 @@
 /* Exported typedef ----------------------------------------------------------*/
 /* Exported variables --------------------------------------------------------*/
 extern NS_I2C_GPIO_TypeDef pca9675;
+extern NS_I2C_GPIO_TypeDef max7320;
 
 /* Exported function ---------------------------------------------------------*/
-void I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio);
+int8_t I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio);
 void I2CIO_Write_Pin(uint32_t pin, uint8_t state);
 void I2CIO_Write_Port(uint32_t val);
-uint8_t I2CIO_Read_Pin(uint32_t pin);
+int8_t I2CIO_Read_Pin(uint32_t pin);
 void I2CIO_Read_Port(uint16_t *data);
 
 

@@ -183,6 +183,7 @@
     <File name="stm_lib/inc/stm32f10x_rtc.h" path="stm_lib/inc/stm32f10x_rtc.h" type="1"/>
     <File name="stm_lib/src/stm32f10x_pwr.c" path="stm_lib/src/stm32f10x_pwr.c" type="1"/>
     <File name="ExHardware/EPM570/EPM570_GPIO.h" path="src/ExHardware/EPM570/EPM570_GPIO.h" type="1"/>
+    <File name="ExHardware/I2C_GPIO/max7320.h" path="src/ExHardware/I2C_GPIO/max7320.h" type="1"/>
     <File name="stm_lib/inc/stm32f10x_gpio.h" path="stm_lib/inc/stm32f10x_gpio.h" type="1"/>
     <File name="ExHardware/EPM570/EPM570_Registers.h" path="src/ExHardware/EPM570/EPM570_Registers.h" type="1"/>
     <File name="Interface/Meas_Menu.c" path="src/Interface/Meas_Menu.c" type="1"/>
@@ -198,6 +199,7 @@
     <File name="ExHardware/EPM570/EPM570_GPIO.c" path="src/ExHardware/EPM570/EPM570_GPIO.c" type="1"/>
     <File name="Drivers/RTC/RTC.c" path="src/Drivers/RTC/RTC.c" type="1"/>
     <File name="stm_lib/src/stm32f10x_flash.c" path="stm_lib/src/stm32f10x_flash.c" type="1"/>
+    <File name="ExHardware/I2C_GPIO/max7320.c" path="src/ExHardware/I2C_GPIO/max7320.c" type="1"/>
     <File name="Interface/Trig_Menu.c" path="src/Interface/Trig_Menu.c" type="1"/>
     <File name="Drivers/SysTick/systick.c" path="src/Drivers/SysTick/systick.c" type="1"/>
     <File name="stm_lib/inc/stm32f10x_rcc.h" path="stm_lib/inc/stm32f10x_rcc.h" type="1"/>

@@ -44,6 +44,7 @@ __IO OscMode_TypeDef gOSC_MODE =
 	PWR_S_DISABLE,		// Power save mode state
 	BCKL_MAX,
 	(void*)0,			// Pointer fo external i2c ports chip
+	Host_CP2102_Mode,	// Host communicate type
 	ENABLE,				// Beeper state
 	RUN,				// Work state
 	FALSE				// Configure state
@@ -87,7 +88,7 @@ extern FlagStatus ADC_Ready(void);
 void setCondition(uint8_t RUN_HOLD);
 void (*pMNU)(void) = Change_Menu_Indx;     /* указатель на функцию меню */
 
-uint16_t portData = 0;
+__IO uint16_t portData = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private Functions --------------------------------------------------------*/
@@ -110,8 +111,10 @@ int main(void)
 	/* Load preference from EEPROM */
 	LoadPreference();
 
-	/* Config external I2C GPIO */
-	I2CIO_Configuration(gOSC_MODE.i2c_gpio_chip);
+	/* Default/Saved host communicate state configure */
+	Host_Comunication_Configuration(
+			(NS_Host_Communicate_TypeDef*)&gOSC_MODE.HostCommunicate
+	);
 
 	/* Draw main interface */
 	Draw_Interface();
@@ -124,13 +127,6 @@ int main(void)
 
 	NVIC_EnableIRQ(RTC_IRQn);
 	__enable_irq();
-
-
-	//	I2CIO_Write_Pin(GPIO_Pin_0, 0);
-	//	portData = I2CIO_Read_Pin(GPIO_Pin_0);
-	//	I2CIO_Write_Port(0xFF0F);
-	//	portData = I2CIO_Read_Pin(GPIO_Pin_0);
-	//	I2CIO_Read_Port(&portData);
 
 
 	/* Main work */

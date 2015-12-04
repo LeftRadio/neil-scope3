@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file	 	ns_esp_07.h
+  * @file	 	max7320.h
   * @author  	Left Radio
   * @version	1.0.0
   * @date
@@ -9,26 +9,24 @@
 **/
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __NS_ESP_07__H
-#define __NS_ESP_07__H
+#ifndef __NS_MAX7320_GPIO__H
+#define __NS_MAX7320_GPIO__H
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include "i2c_gpio.h"
 
 /* Exported define -----------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported typedef ----------------------------------------------------------*/
+extern NS_I2C_GPIO_TypeDef max7320;
+
 /* Exported variables --------------------------------------------------------*/
 /* Exported function ---------------------------------------------------------*/
 
-int ESP_State_Host_MCU(void);
-int ESP_State_Interconnect_CP2102(void);
-int ESP_State_Bootloader(void);
-int ESP_State_OFF(void);
 
 
-#endif /* __NS_ESP_07__H */
+
+#endif /* __NS_MAX7320_GPIO__H */
 /*********************************************************************************************************
       END FILE
 *********************************************************************************************************/

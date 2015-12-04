@@ -23,7 +23,7 @@ void External_Peripheral_Init(void);
 void Start_Bootloader(void);
 void Delay_ms (uint16_t mS);
 void Init_Inerlive_GPIO(void);
-
+int8_t Host_Comunication_Configuration(void* host_mode);
 
 
 

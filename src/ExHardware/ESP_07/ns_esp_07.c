@@ -11,15 +11,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
 #include "defines.h"
-//#include "main.h"
-//#include "init.h"
-//#include "Settings.h"
-//#include "User_Interface.h"
-//#include "EPM570.h"
-//#include "Synchronization.h"
-//#include "Processing_and_output.h"
-//#include "Host.h"
-//#include "IQueue.h"
+#include "ns_esp_07.h"
+#include "SysTick.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -37,5 +30,91 @@
  */
 int ESP_Configuration(void)
 {
-	return -1;
+	return 0;
 }
+
+
+/**
+ * @brief  ESP_State_Host_MCU
+ * @param  None
+ * @retval None
+ */
+int ESP_State_Host_MCU(void)
+{
+	/* Boot OFF*/
+	I2CIO_Write_Pin(GPIO_Pin_0, Bit_SET);
+
+	/* Revert ESP USART RX/TX, ESP_TX->MCU_RX, ESP_RX<-MCU_TX */
+	I2CIO_Write_Pin(GPIO_Pin_2, Bit_SET);
+
+	delay_ms(100);
+
+	/* Power ON */
+	I2CIO_Write_Pin(GPIO_Pin_1, Bit_SET);
+
+	return 0;
+}
+
+/**
+ * @brief  ESP_State_Interconnect_CP2102
+ * @param  None
+ * @retval None
+ */
+int ESP_State_Interconnect_CP2102(void)
+{
+	/* Boot OFF*/
+	I2CIO_Write_Pin(GPIO_Pin_0, Bit_SET);
+
+	/* ESP USART RX/TX, ESP_TX->CP2102_RX, ESP_RX<-CP2102_TX */
+	I2CIO_Write_Pin(GPIO_Pin_2, Bit_RESET);
+
+	delay_ms(100);
+
+	/* Power ON */
+	I2CIO_Write_Pin(GPIO_Pin_1, Bit_SET);
+
+	return 0;
+}
+
+/**
+ * @brief  ESP_State_Bootloader
+ * @param  None
+ * @retval None
+ */
+int ESP_State_Bootloader(void)
+{
+	/* Boot ON */
+	I2CIO_Write_Pin(GPIO_Pin_0, Bit_RESET);
+
+	/* ESP USART RX/TX, ESP_TX->CP2102_RX, ESP_RX<-CP2102_TX */
+	I2CIO_Write_Pin(GPIO_Pin_2, Bit_RESET);
+
+	delay_ms(100);
+
+	/* Power ON */
+	I2CIO_Write_Pin(GPIO_Pin_1, Bit_SET);
+
+	return 0;
+}
+
+
+/**
+ * @brief  ESP_State_OFF
+ * @param  None
+ * @retval None
+ */
+int ESP_State_OFF(void)
+{
+	/* Power OFF */
+	I2CIO_Write_Pin(GPIO_Pin_1, Bit_RESET);
+
+	/* Boot OFF */
+	I2CIO_Write_Pin(GPIO_Pin_0, Bit_SET);
+
+	/* ESP USART RX/TX, ESP_TX->CP2102_RX, ESP_RX<-CP2102_TX */
+	I2CIO_Write_Pin(GPIO_Pin_2, Bit_RESET);
+
+	return 0;
+}
+
+

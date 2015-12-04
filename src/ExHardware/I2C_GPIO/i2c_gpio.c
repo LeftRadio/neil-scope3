@@ -29,12 +29,13 @@ NS_I2C_GPIO_TypeDef *ns_i2c_gpio;
  * @param  None
  * @retval None
  */
-void I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio)
+int8_t I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio)
 {
 	if(gpio != (void*)0) {
 		ns_i2c_gpio = gpio;
-		ns_i2c_gpio->Configuration();
+		return ns_i2c_gpio->Configuration();
 	}
+	return -1;
 }
 
 /**
@@ -44,13 +45,15 @@ void I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio)
  */
 void I2CIO_Write_Pin(uint32_t pin, uint8_t state)
 {
-	__disable_irq ();
-	ButtonPush = B_RESET;
+	if(ns_i2c_gpio != (void*)0) {
+		__disable_irq ();
+		ButtonPush = B_RESET;
 
-	ns_i2c_gpio->Write_Pin(pin, state);
-	delay_ms(10);
+		ns_i2c_gpio->Write_Pin(pin, state);
+		delay_ms(10);
 
-	__enable_irq ();
+		__enable_irq ();
+	}
 }
 
 /**
@@ -60,13 +63,15 @@ void I2CIO_Write_Pin(uint32_t pin, uint8_t state)
  */
 void I2CIO_Write_Port(uint32_t val)
 {
-	__disable_irq ();
-	ButtonPush = B_RESET;
+	if(ns_i2c_gpio != (void*)0) {
+		__disable_irq ();
+		ButtonPush = B_RESET;
 
-	ns_i2c_gpio->Write_Port(val);
-	delay_ms(10);
+		ns_i2c_gpio->Write_Port(val);
+		delay_ms(10);
 
-	__enable_irq ();
+		__enable_irq ();
+	}
 }
 
 /**
@@ -74,19 +79,23 @@ void I2CIO_Write_Port(uint32_t val)
  * @param  None
  * @retval None
  */
-uint8_t I2CIO_Read_Pin(uint32_t pin)
+int8_t I2CIO_Read_Pin(uint32_t pin)
 {
-	uint8_t state;
+	int8_t state;
 
-	__disable_irq ();
-	ButtonPush = B_RESET;
+	if(ns_i2c_gpio != (void*)0) {
+		__disable_irq ();
+		ButtonPush = B_RESET;
 
-	state = ns_i2c_gpio->Read_Pin(pin);
-	delay_ms(10);
+		state = ns_i2c_gpio->Read_Pin(pin);
+		delay_ms(10);
 
-	__enable_irq ();
+		__enable_irq ();
 
-	return state;
+		return state;
+	}
+
+	return -1;
 }
 
 /**
@@ -96,11 +105,13 @@ uint8_t I2CIO_Read_Pin(uint32_t pin)
  */
 void I2CIO_Read_Port(uint16_t *data)
 {
-	__disable_irq ();
-	ButtonPush = B_RESET;
+	if(ns_i2c_gpio != (void*)0) {
+		__disable_irq ();
+		ButtonPush = B_RESET;
 
-	ns_i2c_gpio->Read_Port(data);
-	delay_ms(10);
+		ns_i2c_gpio->Read_Port(data);
+		delay_ms(10);
 
-	__enable_irq ();
+		__enable_irq ();
+	}
 }

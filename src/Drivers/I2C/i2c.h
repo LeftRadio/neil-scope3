@@ -18,8 +18,8 @@
 /* Exported variables --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address);
-void I2C_Read_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address);
+int8_t I2C_Write_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address);
+int8_t I2C_Read_Bytes(uint8_t *Data, uint8_t len, uint8_t i2c_address);
 
 
 

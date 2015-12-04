@@ -23,8 +23,7 @@
 #include "User_Interface.h"
 #include "RTC.h"
 #include "IQueue.h"
-#include "i2c_gpio.h"
-#include "pca9675.h"
+#include "ns_esp_07.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -357,7 +356,7 @@ static void USART_Config(void)
 	USART_Cmd(USART1, ENABLE);		/* Enable the USART1 */
 
 	/* Enable USART1 RX DMA1 Channel */
-	DMA_Cmd(DMA1_Channel5, ENABLE);
+	DMA1_Channel5->CCR |= DMA_CCR5_EN;
 }
 
 /**
@@ -365,7 +364,7 @@ static void USART_Config(void)
  * @param  None
  * @retval None
  */
-static void USART_DMA_DefaultConfiguration(void)
+static void USART_DMA_Configuration(void)
 {
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
@@ -389,6 +388,26 @@ static void USART_DMA_DefaultConfiguration(void)
 
 	NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 	NVIC_SetPriority(DMA1_Channel5_IRQn, 0);
+}
+
+/**
+ * @brief  USART_DMA_DeConfiguration
+ * @param  None
+ * @retval None
+ */
+static void USART_DMA_DeConfiguration(void)
+{
+	DMA_ITConfig(DMA1_Channel5, DMA_IT_TC, DISABLE);
+	NVIC_DisableIRQ(DMA1_Channel5_IRQn);
+
+	USART_Cmd(USART1, DISABLE);
+	USART_DMACmd(USART1, USART_DMAReq_Rx , DISABLE);
+
+	DMA1_Channel5->CCR &= ~DMA_CCR5_EN;
+	DMA_DeInit(DMA1_Channel5);
+
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, DISABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, DISABLE);
 }
 
 /**
@@ -508,7 +527,6 @@ void Global_Init(void)
 	I2C_Configuration();			// I2C configuration
 
 	Host_IQueue_Initialization();
-	USART_DMA_DefaultConfiguration();
 
 //	if(ON_OFF_button == 0) GPIOC->BRR = GPIO_Pin_15;
 }
@@ -583,6 +601,77 @@ void Start_Bootloader(void)
 }
 
 
+/**
+ * @brief  Start_Bootloader
+ * @param  None
+ * @retval None
+ */
+int8_t Host_Comunication_Configuration(void* host_mode)
+{
+	int8_t state;
+	NS_Host_Communicate_TypeDef* mode = (NS_Host_Communicate_TypeDef*)host_mode;
+
+	gOSC_MODE.i2c_gpio_chip = &max7320;
+
+	/* Config external I2C GPIO */
+	state = I2CIO_Configuration(gOSC_MODE.i2c_gpio_chip);
+	if (!state) {
+
+		if ( *mode == Host_OFF ) {
+			/* MCU USART OFF */
+			USART_DMA_DeConfiguration();
+			/* OFF ESP module */
+			ESP_State_OFF();
+		}
+		else if ( *mode == Host_ESP_Boot_Mode ) {
+			/* MCU USART OFF */
+			USART_DMA_DeConfiguration();
+			/* ON ESP module, CP2102<->ESP bridge mode, Bootloader */
+			ESP_State_Bootloader();
+		}
+		else if ( *mode == Host_Bridge_Mode ) {
+			/* MCU USART OFF */
+			USART_DMA_DeConfiguration();
+			/* ON ESP module, CP2102<->ESP bridge mode */
+			ESP_State_Interconnect_CP2102();
+		}
+		else if (*mode == Host_CP2102_Mode) {
+			/* OFF ESP module */
+			ESP_State_OFF();
+			/* MCU USART ON */
+			USART_DMA_Configuration();
+		}
+		else if (*mode == Host_ESP_Mode) {
+			/* MCU USART ON */
+			USART_DMA_Configuration();
+			/* ON ESP module, MCU<->ESP bridge mode */
+			ESP_State_Host_MCU();
+		}
+	}
+
+
+	return state;
+}
+
+/**
+ * @brief  Start_Bootloader
+ * @param  None
+ * @retval None
+ */
+void Host_USART_Configuration(void)
+{
+
+}
+
+/**
+ * @brief  Start_Bootloader
+ * @param  None
+ * @retval None
+ */
+void Host_USART_SetState(FunctionalState state)
+{
+
+}
 
 
 
