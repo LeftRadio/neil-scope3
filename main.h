@@ -112,23 +112,24 @@ typedef struct
 
 } CH_INFO_TypeDef;
 
-/* */
-typedef struct {
-	uint8_t i2c_address;
-	int8_t (*Configuration)(void);
-	int8_t (*Write_Pin)(uint32_t pin, uint8_t state);
-	int8_t (*Write_Port)(uint32_t val);
-	int8_t (*Read_Pin)(uint32_t pin);
-	int8_t (*Read_Port)(void* data);
-} NS_I2C_GPIO_TypeDef;
+///* */
+//typedef struct {
+//	uint8_t i2c_address;
+//	int8_t (*Configuration)(void);
+//	int8_t (*Write_Pin)(uint32_t pin, uint8_t state);
+//	int8_t (*Write_Port)(uint32_t val);
+//	int8_t (*Read_Pin)(uint32_t pin);
+//	int8_t (*Read_Port)(void* data);
+//} NS_I2C_GPIO_TypeDef;
 
 /* */
 typedef enum {
-	Host_OFF,
-	Host_Bridge_Mode,
-	Host_CP2102_Mode,
-	Host_ESP_Mode,
-	Host_ESP_Boot_Mode,
+	Host_Undefined = (int8_t)-1,
+	Host_OFF = (int8_t)0,
+	Host_Bridge_Mode = (int8_t)1,
+	Host_CP2102_Mode = (int8_t)2,
+	Host_ESP_Mode = (int8_t)3,
+	Host_ESP_Boot_Mode = (int8_t)4,
 } NS_Host_Communicate_TypeDef;
 
 /* Global device work mode/state struct  */
@@ -141,7 +142,7 @@ typedef struct
 	Boolean  autoMeasurments;
 	PwrSaveState_Typedef PowerSave;
 	BcklightState_Typedef BackLight;
-	NS_I2C_GPIO_TypeDef* i2c_gpio_chip;
+	uint8_t i2c_gpio_chip_index;
 	NS_Host_Communicate_TypeDef HostCommunicate;
 	FunctionalState BeepState;
 	State_TypeDef  State;
@@ -163,8 +164,8 @@ typedef struct {
 
 /* Exported variables --------------------------------------------------------*/
 extern CH_INFO_TypeDef *pINFO, INFO_A, INFO_B, DINFO_A;
-extern __IO OscMode_TypeDef  gOSC_MODE;
-extern __IO SamplesWin_Typedef gSamplesWin;
+extern volatile OscMode_TypeDef  gOSC_MODE;
+extern volatile SamplesWin_Typedef gSamplesWin;
 extern OFF_Struct_TypeDef AutoOff_Timer;
 
 extern FlagStatus show_FPS_flag;

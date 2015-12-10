@@ -107,7 +107,7 @@ typedef struct
 
 typedef enum
 { Bit_RESET = 0,
-  Bit_SET
+  Bit_SET = 1
 }BitAction;
 
 #define IS_GPIO_BIT_ACTION(ACTION) (((ACTION) == Bit_RESET) || ((ACTION) == Bit_SET))

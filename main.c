@@ -14,6 +14,7 @@
 #include "main.h"
 #include "init.h"
 #include "Settings.h"
+#include "SysTick.h"
 #include "User_Interface.h"
 #include "EPM570.h"
 #include "Synchronization.h"
@@ -43,7 +44,7 @@ __IO OscMode_TypeDef gOSC_MODE =
 	OFF,				// Automeasurments state
 	PWR_S_DISABLE,		// Power save mode state
 	BCKL_MAX,
-	(void*)0,			// Pointer fo external i2c ports chip
+	0,					// external i2c ports chip
 	Host_CP2102_Mode,	// Host communicate type
 	ENABLE,				// Beeper state
 	RUN,				// Work state
@@ -66,31 +67,20 @@ OFF_Struct_TypeDef AutoOff_Timer = {
 		DISABLE,	// Auto OFF State
 };
 
-#ifdef __MAIN_C_HOST_DEBUG__
-	char DBG_CMD[5] = { 0 };
-	char DBG_LEN[5] = { 0 };
-	char DBG_CNT[5] = { 0 };
-	char DBG_CNT_MAX[10] = { 0 };
-	char DBG_ALL_CNT[10] = { 0 };
-	__IO int8_t IQueue_CommandCount_MAX = 0;
-	__IO uint16_t SuccessWorkedCommand = 0;
-#endif
-#ifdef __VAR_DEBUG__
-//	__IO uint32_t dCommandCounter = 0;
-//	__IO uint32_t dTrDataCounter = 0;
-#endif
-
 extern btnINFO btnRUN_HOLD;
 extern volatile uint8_t IN_HostData[CMD_MAX_SIZE];
+extern Boolean USB_CP2102_Connect_Event;
+extern const char btnHostMode_Texts[5][19];
 
 /* Extern function -----------------------------------------------------------*/
 extern FlagStatus ADC_Ready(void);
 void setCondition(uint8_t RUN_HOLD);
 void (*pMNU)(void) = Change_Menu_Indx;     /* указатель на функцию меню */
 
-__IO uint16_t portData = 0;
 
 /* Private function prototypes -----------------------------------------------*/
+static void Host_Communicate_USBEvent(void);
+
 /* Private Functions --------------------------------------------------------*/
 
 /**
@@ -136,6 +126,9 @@ int main(void)
 #ifndef __SWD_DEBUG__
 		if(gOSC_MODE.PowerSave == PWR_S_ENABLE)	__WFI();
 #endif
+
+		// Check USB interrupt event
+		Host_Communicate_USBEvent();
 
 		if(Host_IQueue_Get_CommandsCount() > 0)	{
 			if(Host_IQueue_GetReadStatus((uint8_t*)&IQueue_WorkIndex) == TRUE) {
@@ -213,6 +206,48 @@ int main(void)
 	}
 }
 
+/**
+ * @brief  Host_Communicate_USBEvent
+ * @param  None
+ * @retval None
+ */
+static void Host_Communicate_USBEvent(void)
+{
+	static NS_Host_Communicate_TypeDef communicate_saved_state = 255;
+	char* ext_message;
+
+	if (USB_CP2102_Connect_Event == TRUE) {
+
+		USB_CP2102_Connect_Event = FALSE;
+
+		if ((gOSC_MODE.HostCommunicate == Host_ESP_Mode) || (communicate_saved_state == Host_ESP_Mode)) {
+			if(GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_8) == Bit_RESET) {
+				if (communicate_saved_state != 255) {
+					gOSC_MODE.HostCommunicate = communicate_saved_state;
+				}
+				else {
+					communicate_saved_state = gOSC_MODE.HostCommunicate;
+				}
+				ext_message = "USB DisConnected, Host mode Restore";
+			}
+			else {
+				communicate_saved_state = gOSC_MODE.HostCommunicate;
+				gOSC_MODE.HostCommunicate = Host_OFF;
+
+				ext_message = "USB Connected, Host OFF";
+			}
+
+			Host_Comunication_Configuration(
+					(NS_Host_Communicate_TypeDef*)&gOSC_MODE.HostCommunicate
+			);
+
+			Show_Message(ext_message);
+			delay_ms(1000);
+			ext_message = (char*)btnHostMode_Texts[gOSC_MODE.HostCommunicate];
+			Show_Message(ext_message);
+		}
+	}
+}
 
 /**
  * @brief  setCondition, global work state - RUN or HOLD
