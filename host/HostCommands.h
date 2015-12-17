@@ -1,43 +1,38 @@
 /**
   ******************************************************************************
-  * @file	 	IQueue.h
-  * @author  	Left Radio
+  * @file       ReceivedStateMachine.h
+  * @author     Left Radio
   * @version
   * @date
-  * @brief		header
+  * @brief      header
   ******************************************************************************
 **/
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef _IQUEUE__H
-#define _IQUEUE__H
+#ifndef _HOST_COMMANDS__H
+#define _HOST_COMMANDS__H
 
 /* Includes ------------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
-#define CMD_MAX_SIZE		10
-#define IQUEUE_SIZE			4
+#define HOST_CMD_CNT        22
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported typedef ----------------------------------------------------------*/
-typedef struct {
-	Boolean IsEmpty;
-	uint8_t Data[CMD_MAX_SIZE];
-	uint8_t CMD_Index;
-} IQueue_TypeDef;
+typedef struct
+{
+    uint8_t Command[10];
+    int8_t (*Handler)(uint8_t* data);
+//    Boolean Complete;
+} Host_Commands_TypeDef;
 
 /* Exported variables --------------------------------------------------------*/
+extern const Host_Commands_TypeDef Host_Commands[HOST_CMD_CNT];
+
 /* Exported function ---------------------------------------------------------*/
-void Host_IQueue_Initialization(void);
-void Host_SetIQueue(uint8_t* data, uint8_t cmd_index);
-IQueue_TypeDef* Host_GetIQueue(uint8_t index);
-uint8_t Host_IQueue_GetEmptyIndex(void);
-void Host_IQueue_Clear(uint8_t index);
-void Host_IQueue_ClearAll(void);
-int8_t Host_IQueue_GetWorkIQueue(void);
 
 
 
-#endif /* _IQUEUE__H */
+#endif /* _HOST_COMMANDS__H */
 /*********************************************************************************************************
       END FILE
 *********************************************************************************************************/

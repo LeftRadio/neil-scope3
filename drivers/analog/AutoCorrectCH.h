@@ -19,7 +19,7 @@ Comments    :
 /* Exported function --------------------------------------------------------*/
 void Auto_CorrectZ_CH_A(void);
 void Auto_CorrectZ_CH_B(void);
-void Auto_CorrectZ_CH(uint8_t Channel);
+int8_t Auto_CorrectZ_CH(uint8_t Channel);
 
 #endif /* __AUTO_CORRECT_H */
 /*********************************************************************************************************

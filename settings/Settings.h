@@ -27,6 +27,9 @@ void LoadPreference(void);							// чтение сохранненых наст
 uint8_t SavePreference(void);						// сохраннение настроек
 uint8_t ErasePreference(void);
 
+uint8_t Settings_SaveParam(const SettingsParam_TypeDef* param);
+
+
 
 #endif /* __SETTINGS_H */
 /*********************************************************************************************************

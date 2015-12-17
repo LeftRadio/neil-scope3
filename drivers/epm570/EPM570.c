@@ -35,7 +35,6 @@ typedef enum { Standby_BothCH, Standby_CH_B, NormalOperation, AlignOperation } A
 /* Private define ------------------------------------------------------------*/
 /* Private varibles ----------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-//uint32_t preTrigger_time = 1;
 extern uint8_t IQueue_WorkIndex;
 
 /* Exported variables --------------------------------------------------------*/
@@ -43,7 +42,7 @@ __IO int32_t TimeoutCnt;
 __IO FlagStatus SRAM_TimeoutState = RESET;
 __IO State_TypeDef wrSRAM = STOP;
 __IO int8_t InterliveCorrectionCoeff = 0;
-__IO uint8_t LA_Diff_MASK = 0, LA_Cond_MASK = 0;
+//__IO uint8_t LA_Diff_MASK = 0, LA_Cond_MASK = 0;
 FunctionalState RLE_State = DISABLE;
 
 /* Private function prototypes -----------------------------------------------*/
@@ -254,8 +253,7 @@ State_TypeDef EPM570_SRAM_Write(void)
 	EPM570_Registers_WriteReg(EPM570_Register_extPin_1.address, EPM570_Register_extPin_1.bits);
 
 	/* Enable OA, ADC */
-	if(pINFO != &DINFO_A)
-	{
+	if(pINFO != &DINFO_A) {
 		Control_AD8129(ENABLE);
 		EPM570_Set_AD9288_State(AlignOperation);
 	}
@@ -280,20 +278,19 @@ State_TypeDef EPM570_SRAM_Write(void)
 	/* Wait write end, or interrupt write cycle */
 	while((EPM570_Write_Ready == 0) && (wrSRAM != STOP))  //
 	{
-		if((HostMode == ENABLE) && (Host_IQueue_Get_CommandsCount() > 1))
-		{
+		if( Host_IQueue_GetWorkIQueue() > 0 ) {
 			break;
 		}
 
-		if(SRAM_TimeoutState == SET)
-		{
-			if(gSyncState.Mode == Sync_AUTO)
-			{
+		if(SRAM_TimeoutState == SET) {
+			if(gSyncState.Mode == Sync_AUTO) {
 				gSyncState.Mode = Sync_NONE;
 				tColor = Yellow;
 				break;
 			}
-			else tColor = White;
+			else {
+				tColor = White;
+			}
 
 			if(tFlag == 0) UI_SamplingSetTimeout(tColor);
 			else UI_SamplingSetTimeout(LightBlack);
@@ -323,15 +320,12 @@ State_TypeDef EPM570_SRAM_Write(void)
 	gSyncState.Mode = tSyncMode;
 	gSyncState.foops->StateUpdate();
 
-	if(wrSRAM != STOP)
-	{
-		if(SRAM_TimeoutState != SET)
-		{
+	if(wrSRAM != STOP) {
+		if(SRAM_TimeoutState != SET) {
 			UI_SamplingClearTimeout();
 			wrSRAM = COMPLETE;
 		}
-		else if(gSyncState.Mode == Sync_AUTO)
-		{
+		else if(gSyncState.Mode == Sync_AUTO) {
 			wrSRAM = COMPLETE;
 		}
 	}

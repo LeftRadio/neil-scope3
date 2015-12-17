@@ -9,25 +9,22 @@
 **/
 
 #ifndef __HOST_H
-#define __HOST_H 
+#define __HOST_H
 
-/* Includes ------------------------------------------------------------------*/	   
+/* Includes ------------------------------------------------------------------*/
 /* Exported typedef ----------------------------------------------------------*/
 typedef enum { NO_Request, Data_Request, Calibrate_Request, Disconnect, Bootoader_Request} HostRequestType;
 
 /* Host Request struct type */
-typedef struct
-{
+typedef struct {
 	FunctionalState State;
 	HostRequestType Request;
+	uint8_t UserData;
 	uint32_t DataLen;
-
 } HostRequest_TypeDef;
 
 /* Exported define -----------------------------------------------------------*/
 /* Exported variables --------------------------------------------------------*/
-extern uint8_t OUT_HostData[30];
-
 extern FunctionalState HostMode;
 extern Boolean SamplesData_ACK;
 extern __IO HostRequest_TypeDef gHostRequest;
@@ -41,7 +38,6 @@ FlagStatus Host_GetTerminateCmd(void);
 
 uint8_t CRC8_Buff(uint8_t *pBuff, uint16_t NumBytes);
 uint8_t CRC8(uint8_t Byte, uint8_t crc);
-
 
 
 #endif /* __HOST_H */

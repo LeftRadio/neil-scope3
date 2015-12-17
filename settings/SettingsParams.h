@@ -13,17 +13,11 @@
 #define __SETTINGS_PARAM_H
 
 /* Includes ------------------------------------------------------------------*/
+#include  "main.h"
+
 /* Exported define -----------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported typedef ----------------------------------------------------------*/
-typedef struct {
-
-	const uint8_t* u8_data;					// param data pointer
-	const uint16_t start_addr;				// prevParam_start_index + prevParam_num_bytes + 1(CRC)
-	const uint8_t num_bytes;				// param number bytes to Save/Load
-
-} SettingsParam_TypeDef;
-
 
 /* Exported variables --------------------------------------------------------*/
 const SettingsParam_TypeDef Param_ADC_Zero_A = { (uint8_t*)(&INFO_A.AD_Type.Analog.Zero_PWM_values[0]), 0x00, 24 };

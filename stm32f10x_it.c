@@ -11,6 +11,7 @@ Comments:   :  This file provides template for all exceptions handler and
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_it.h"
+#include "defines.h"
 #include "main.h"
 #include "Host.h"
 #include "EPM570.h"
@@ -19,7 +20,8 @@ Comments:   :  This file provides template for all exceptions handler and
 #include "init.h"
 #include "systick.h"
 #include "IQueue.h"
-#include "defines.h"
+#include "ReceiveStateMachine.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -40,6 +42,8 @@ FlagStatus MessageEvent = RESET;
 extern btnINFO btnRUN_HOLD;
 
 Boolean USB_CP2102_Connect_Event = FALSE;
+
+__IO int hostPackedRecived = 0;
 
 /* Extern function -----------------------------------------------------------*/
 extern void Error_message(char* message_text);
@@ -178,46 +182,62 @@ void RTC_IRQHandler(void)
 		RTC_ClearITPendingBit(RTC_IT_SEC);
 		RTC_WaitForLastTask();
 
-		/* If counter is equal to 86399: one day was elapsed */
-		if(RTC_GetCounter() == 86399)
-		{
-			/* Wait until last write operation on RTC registers has finished */
-			RTC_WaitForLastTask();
-			/* Reset counter value */
-			RTC_SetCounter(0x0);
-			/* Wait until last write operation on RTC registers has finished */
-			RTC_WaitForLastTask();
-		}
+		if( HostMode == DISABLE ) {
 
-		Curent_RTC_Counter = RTC_GetCounter();
-
-		// Set message event
-		if(gMessage.Visible == TRUE)
-		{
-			tTime = Curent_RTC_Counter - gMessage.TimeOFF;
-			if(tTime > 0)
+			/* If counter is equal to 86399: one day was elapsed */
+			if(RTC_GetCounter() == 86399)
 			{
-				MessageEvent = SET;
+				/* Wait until last write operation on RTC registers has finished */
+				RTC_WaitForLastTask();
+				/* Reset counter value */
+				RTC_SetCounter(0x0);
+				/* Wait until last write operation on RTC registers has finished */
+				RTC_WaitForLastTask();
+			}
+
+
+			Curent_RTC_Counter = RTC_GetCounter();
+
+			// Set message event
+			if(gMessage.Visible == TRUE)
+			{
+				tTime = Curent_RTC_Counter - gMessage.TimeOFF;
+				if(tTime > 0)
+				{
+					MessageEvent = SET;
+				}
+			}
+
+			// Verify auto power OFF
+			if((AutoOff_Timer.State == ENABLE) && (HostMode != ENABLE))
+			{
+				tTime = Curent_RTC_Counter - AutoOff_Timer.ResetTime;
+				wTime = AutoOff_Timer.Work_Minutes * 60;
+
+				if(tTime >= wTime)
+				{
+					__disable_irq();
+					SavePreference();
+					Beep_Start();
+
+					GPIOC->BRR = GPIO_Pin_15;
+				}
+			}
+
+			// batt update
+			if(show_ADC_flag != SET) {
+				ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 			}
 		}
+//		else {
 
-		// Verify auto power OFF
-		if((AutoOff_Timer.State == ENABLE) && (HostMode != ENABLE))
-		{
-			tTime = Curent_RTC_Counter - AutoOff_Timer.ResetTime;
-			wTime = AutoOff_Timer.Work_Minutes * 60;
-
-			if(tTime >= wTime)
-			{
-				__disable_irq();
-				SavePreference();
-				Beep_Start();
-
-				GPIOC->BRR = GPIO_Pin_15;
-			}
-		}
-
-		if(show_ADC_flag != SET) ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+//			if (hostPackedRecived == 0) {
+//				Host_IQueue_ClearAll();
+//			}
+//			else {
+//				hostPackedRecived = 0;
+//			}
+//		}
 	}
 }
 
@@ -413,66 +433,139 @@ void ADC1_2_IRQHandler(void)
   * @param  None
   * @retval None
   */
+void USART1_IRQHandler(void)
+{
+	static uint8_t even_byte = 0;
+	uint8_t data;
+
+	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+
+		/* Read one byte from the receive data register */
+		data = (uint16_t)(USART1->DR & (uint16_t)0x01FF);
+
+		if(gOSC_MODE.HostCommunicate == Host_ESP_Mode) {
+			if(!even_byte) {
+				even_byte = 1;
+			}
+			else {
+				even_byte = 0;
+				return;
+			}
+		}
+
+		/* push recived data to recive state machine */
+		ReceivedStateMachine_Event(data);
+	}
+}
+
+
+/**
+  * @brief  Message succsessful recived callback from USART state machine
+  * @param  None
+  * @retval None
+  */
+void ReceivedStateMachine_CompleteCallBack(uint8_t command_index, uint8_t* command_data)
+{
+	Host_SetIQueue(command_data+1, command_index);
+}
+
+
+/**
+  * @brief  This function handles USART1 interrupt request.
+  * @param  None
+  * @retval None
+  */
 void DMA1_Channel5_IRQHandler(void)
 {
-	static uint8_t stg = 0;
-	static uint8_t WorkCell_Index = 0;
-	volatile IQueue_TypeDef *IQueue = 0;
+//	static uint8_t stg = 0;
+//	static uint8_t WorkCell_Index = 0;
+//	static __IO IQueue_TypeDef *IQueue = 0;
+
+//	uint8_t esp_mltp = (gOSC_MODE.HostCommunicate == Host_ESP_Mode)? 2 : 1;
+//	uint8_t i;
+
 
 	if ((DMA1->ISR & DMA1_IT_TC5) != (uint32_t)RESET)
 	{
 		/* Clear DMA1 Channel 1 Half Transfer, Transfer Complete and Global interrupt pending bits */
 		DMA1->IFCR = DMA1_IT_GL5;
-
-		/* Stop DMA channel for reconfig */
-		DMA1_Channel5->CCR  &= ~DMA_CCR5_EN;
-
-		/* Get IQueue pointer */
-		IQueue = Host_GetIQueue(WorkCell_Index);
-
-		/* If start message and first byte recive is 0x5B */
-		if((stg == 0) && (IQueue->Data[0] == 0x5B))
-		{
-			stg = 1;
-			DMA1_Channel5->CNDTR = IQueue->Data[2] + 1;  		// New recive data count
-			DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[3]; 	// New memory addr
-		}
-		else
-		{
-			if(stg == 1)
-			{
-				/* If "Terminate_LastCommad" recived */
-				if(IQueue->Data[1] == 0x50) IQueue_CommandStatus = FALSE;
-				else
-				{
-					/* Save host request to current cell */
-					IQueue->IsEmpty = FALSE;
-					IQueue->CMD_Length = IQueue->Data[2] + 4;
-
-					/* Search next cell to write for the next command */
-					WorkCell_Index = Host_IQueue_GetEmptyIndex();
-					IQueue = Host_GetIQueue(WorkCell_Index);
-				}
-			}
-
-			/* If was an attempt to init bootloader on 115200 then 0x5B saved in 3th byte */
-			if((IQueue->Data[1] == 0x80) && (IQueue->Data[2] == 0x5B))
-			{
-				IQueue->Data[0] = 0x5B;
-				DMA1_Channel5->CNDTR = 2;							// Set to default data length
-				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[1];	// Memory addr
-			}
-			else	/* Normal connecting */
-			{
-				DMA1_Channel5->CNDTR = 3;							// Set to default data length
-				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[0];	// Memory addr
-			}
-
-			stg = 0;
-		}
+//
+//		/* Disable the selected USART by clearing the UE bit in the CR1 register */
+//		USART_DMACmd(USART1, USART_DMAReq_Rx , DISABLE);
+////		USART_Cmd(USART1, DISABLE);
+//		DMA1_Channel5->CCR  &= ~DMA_CCR5_EN;
+//
+//		/* Get IQueue pointer */
+//		IQueue = Host_GetIQueue(WorkCell_Index);
+//
+//
+//		/* If start message and first byte recive is 0x5B */
+//		if((stg == 0) && (IQueue->Data[0] == 0x5B))
+//		{
+//			stg = 1;
+//			DMA1_Channel5->CNDTR = (IQueue->Data[2*esp_mltp] + 1) * esp_mltp;  	// New recive data count
+//			DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[3*esp_mltp]; 			// New memory addr
+//		}
+//		else
+//		{
+//			if(stg == 1)
+//			{
+//				/* If "Terminate_LastCommad" recived */
+//				if(IQueue->Data[1*esp_mltp] == 0x50) IQueue_CommandStatus = FALSE;
+//				else
+//				{
+//					/* Save host request to current cell */
+//					IQueue->IsEmpty = FALSE;
+//					IQueue->CMD_Length = IQueue->Data[2*esp_mltp] + 4;
+//
+//					if (gOSC_MODE.HostCommunicate == Host_ESP_Mode) {
+//						for(i = 1; i < IQueue->CMD_Length; i++) {
+//							IQueue->Data[i] = IQueue->Data[i*2];
+//						}
+//					}
+//
+//					hostPackedRecived++;
+//
+//					/* Search next cell to write for the next command */
+//					WorkCell_Index = Host_IQueue_GetEmptyIndex();
+//					IQueue = Host_GetIQueue(WorkCell_Index);
+//				}
+//			}
+//
+//			/* If was an attempt to init bootloader on 115200 then 0x5B saved in 3th byte */
+//			if((IQueue->Data[1*esp_mltp] == 0x80) && (IQueue->Data[2*esp_mltp] == 0x5B))
+//			{
+//				IQueue->Data[0] = 0x5B;
+//				DMA1_Channel5->CNDTR = 2*esp_mltp;							// Set to default data length
+//				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[1*esp_mltp];	// Memory addr
+//			}
+//			else	/* Normal connecting */
+//			{
+//				if(stg == 0) {
+//
+//					for(i = 0; i < 3; i++) {
+//						USART1->DR = IQueue->Data[i];
+//						while((USART1->SR & USART_FLAG_TXE) == (uint16_t)RESET);
+//					}
+//
+//					/* Search next cell to write for the next command */
+//					Host_IQueue_Clear(WorkCell_Index);
+//					if(++WorkCell_Index >= IQUEUE_SIZE) WorkCell_Index = 0;
+//					IQueue = Host_GetIQueue(WorkCell_Index);
+//
+//				}
+//				DMA1_Channel5->CNDTR = 3*esp_mltp;							// Set to default data length
+//				DMA1_Channel5->CMAR = (uint32_t)&IQueue->Data[0];	// Memory addr
+//			}
+//
+//			stg = 0;
+//		}
 
 		/* Run DMA channel */
-		DMA1_Channel5->CCR  |=  DMA_CCR5_EN;
+//		DMA1_Channel5->CCR  |=  DMA_CCR5_EN;
+//		USART_DMACmd(USART1, USART_DMAReq_Rx , ENABLE);
+//		USART_Cmd(USART1, ENABLE);
 	}
 }
 

@@ -14,12 +14,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
-#define __FIRMWARE_VERSION__			((uint8_t)(58))
-#define __FIRMWARE_REVISION__			"A"
+#define __FIRMWARE_VERSION__			((uint8_t)(59)) //$59
+#define __FIRMWARE_REVISION__			"A"             //$A
 
 /* Debug defines */
 #ifdef __SWD_DEBUG__
-	#define __POWER_BUTTON_OFF__
+	#ifndef __POWER_BUTTON_OFF__
+		#define __POWER_BUTTON_OFF__
+	#endif
 #endif
 
 /* Exported macro ------------------------------------------------------------*/

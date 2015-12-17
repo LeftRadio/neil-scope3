@@ -68,7 +68,6 @@ OFF_Struct_TypeDef AutoOff_Timer = {
 };
 
 extern btnINFO btnRUN_HOLD;
-extern volatile uint8_t IN_HostData[CMD_MAX_SIZE];
 extern Boolean USB_CP2102_Connect_Event;
 extern const char btnHostMode_Texts[5][19];
 
@@ -76,7 +75,6 @@ extern const char btnHostMode_Texts[5][19];
 extern FlagStatus ADC_Ready(void);
 void setCondition(uint8_t RUN_HOLD);
 void (*pMNU)(void) = Change_Menu_Indx;     /* указатель на функцию меню */
-
 
 /* Private function prototypes -----------------------------------------------*/
 static void Host_Communicate_USBEvent(void);
@@ -130,13 +128,15 @@ int main(void)
 		// Check USB interrupt event
 		Host_Communicate_USBEvent();
 
-		if(Host_IQueue_Get_CommandsCount() > 0)	{
-			if(Host_IQueue_GetReadStatus((uint8_t*)&IQueue_WorkIndex) == TRUE) {
-				Recive_Host_Data(IQueue_WorkIndex);
-				Host_IQueue_Clear(IQueue_WorkIndex);
-				Host_IQueue_SetCommandCount(-1);
+//		if(Host_IQueue_Get_CommandsCount() > 0)	{
+			for(i = 0; i < IQUEUE_SIZE; i++) {
+				if(Host_GetIQueue(i)->IsEmpty == FALSE) {
+					Recive_Host_Data(i);
+					Host_IQueue_Clear(i);
+//					Host_IQueue_SetCommandCount(-1);
+				}
 			}
-		}
+//		}
 
 
 		if(HostMode != ENABLE)

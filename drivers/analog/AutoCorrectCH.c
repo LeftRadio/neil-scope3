@@ -27,6 +27,7 @@ Comments:
 #include "AutoCorrectCH.h"
 #include "Host.h"
 #include "Measurments.h"
+#include "Settings.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -36,9 +37,11 @@ Comments:
 /* Private variables ---------------------------------------------------------*/
 uint8_t AutoCorrection_Upper_Y;
 extern uint16_t CH_sw;
+extern const SettingsParam_TypeDef Param_ADC_Zero_A, Param_ADC_Zero_B;
+
 
 /* Private function prototypes -----------------------------------------------*/
-static void Correction(void);
+static int8_t Correction(void);
 static void InterliveChannelCorrection(Channel_ID_TypeDef Channel);
 static int16_t Read_zCycle(void);
 static void Update_Progress(uint16_t Val);
@@ -56,7 +59,12 @@ static FlagStatus Get_CorrectionTerminate(void);
 *******************************************************************************/
 void Auto_CorrectZ_CH_A(void)
 {
-	Auto_CorrectZ_CH(CHANNEL_A);
+	if(ButtonsCode != OK) return;
+	if( Auto_CorrectZ_CH(CHANNEL_A) == 0 ) {
+		if( !Settings_SaveParam(&Param_ADC_Zero_A) ) {
+			Show_Message("ADC CH A corrections Saved");
+		}
+	}
 }
 
 
@@ -69,7 +77,12 @@ void Auto_CorrectZ_CH_A(void)
 *******************************************************************************/
 void Auto_CorrectZ_CH_B(void)
 {
-	Auto_CorrectZ_CH(CHANNEL_B);
+	if(ButtonsCode != OK) return;
+	if( Auto_CorrectZ_CH(CHANNEL_B) == 0 ) {
+		if( !Settings_SaveParam(&Param_ADC_Zero_B) ) {
+			Show_Message("ADC CH B corrections Saved");
+		}
+	}
 }
 
 
@@ -80,23 +93,23 @@ void Auto_CorrectZ_CH_B(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
+int8_t Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 {
 	uint8_t tmp_Analog_Div;
 	char *text = (Channel == CHANNEL_A)? "Channel A" : "Channel B";
 	InterpolationMode_TypeDef *tActiveMode = ActiveMode;
 	Channel_ID_TypeDef tAutoDivState = Get_AutoDivider_State(Channel);
+	int8_t state = -1;
 
 	/* -------------  Host mode Calibration ------------- */
-	if(HostMode == ENABLE)
-	{
+	if(HostMode == ENABLE) {
 		INFO_A.Mode.EN = RUN; INFO_B.Mode.EN = RUN;
 		Set_AutoDivider_State(Channel, DISABLE);
 
 		Set_CH_TypeINFO(Channel);
 		tmp_Analog_Div = pINFO->AD_Type.Analog.Div;
 
-		Correction();
+		state = Correction();
 
 		InterliveChannelCorrection(Channel);
 
@@ -104,14 +117,14 @@ void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 		Change_AnalogDivider(Channel, tmp_Analog_Div);
 		Set_AutoDivider_State(Channel, tAutoDivState);
 
-		return;
+		return state;
 	}
 
 	/* -------------  Autonome mode Calibration ------------- */
 	if(TriggShowInfo.Status == DISABLE) AutoCorrection_Upper_Y = upperLimit - 5;
 	else AutoCorrection_Upper_Y = (upperLimit - 20);
 
-	if(ButtonsCode != OK) return;
+
 	INFO_A.Mode.EN = RUN; INFO_B.Mode.EN = RUN;
 	Set_AutoDivider_State(Channel, DISABLE);
 	changeInterpolation((InterpolationMode_TypeDef*)&IntNONE);
@@ -146,7 +159,7 @@ void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 	LCD_SetTextColor(Red);
 	LCD_PutStrig(rightLimit - 150, AutoCorrection_Upper_Y - 67, 0, "For exit push LEFT");
 
-	Correction();
+	state = Correction();
 
 	InterliveChannelCorrection(Channel);
 
@@ -169,6 +182,8 @@ void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 	Set_AutoDivider_State(Channel, tAutoDivState);
 
 	NVIC_EnableIRQ(TIM2_IRQn);
+
+	return state;
 }
 
 
@@ -179,7 +194,7 @@ void Auto_CorrectZ_CH(Channel_ID_TypeDef Channel)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void Correction(void)
+int8_t Correction(void)
 {
 	uint8_t Valid_Zero = 0; //, tmpCH;
 	uint8_t tValid;
@@ -187,17 +202,17 @@ void Correction(void)
 	uint16_t tX;
 	char *text = "", *ptext = "";
 	uint8_t Div = pINFO->AD_Type.Analog.Div;
+	uint8_t out_host_data[5] = {0};
 
 //	Set_AutoDivider_State(pINFO->Mode.ID, DISABLE);
 
-	for(Div = Divider_Position_MIN; Div <= Divider_Position_MAX; Div++)
-	{
+	for(Div = Divider_Position_MIN; Div <= Divider_Position_MAX; Div++) {
+		/* set analog div position */
 		pINFO->AD_Type.Analog.Div = Div;
 
-		if(HostMode == DISABLE)
-		{
-			for(_cnt = 2; _cnt < 490; _cnt++)
-			{
+		if(HostMode == DISABLE)	{
+
+			for(_cnt = 2; _cnt < 490; _cnt++) {
 				tX = (uint16_t)(((float)_cnt - 1) / Fillcoeff);
 				Fill_Progress(tX, Active_BackColor);
 			}
@@ -213,8 +228,7 @@ void Correction(void)
 			LCD_PutStrig(rightLimit - 90, AutoCorrection_Upper_Y - 52, 0, text);
 			LCD_PutStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, "WAIT...");
 		}
-		else
-		{
+		else {
 			Change_AnalogDivider(pINFO->Mode.ID, Div);
 		}
 
@@ -228,56 +242,57 @@ void Correction(void)
 			avrg_data_A = Read_zCycle();			// read data
 
 			Valid_Zero = 0;
-			if((avrg_data_A >= 0) && (avrg_data_A <= 1))
-			{
+			if((avrg_data_A >= 0) && (avrg_data_A <= 1)) {
 				pINFO->AD_Type.Analog.Zero_PWM_values[Div] = *(pINFO->AD_Type.Analog.corrZ);
 				Valid_Zero = 1;
 				Update_Progress(489);
 				break;
 			}
 
-			if(Get_CorrectionTerminate() == SET)
-			{
+			/* Terminate autocorrection proccess */
+			if(Get_CorrectionTerminate() == SET) {
 				INFO_A.Mode.EN = RUN; INFO_B.Mode.EN = RUN;
-				return;
+				return -1;
 			}
 	    }
 
-		if(HostMode == DISABLE)
-		{
+		/* End one cycle */
+		if(HostMode == DISABLE)	{
 			/* clear old text */
-			LCD_SetTextColor(Active_BackColor);
-			LCD_PutStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, "WAIT...");
+			LCD_PutColorStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, "WAIT...", Active_BackColor);
 
 			/* update state text */
-			if(Valid_Zero == 0){ LCD_SetTextColor(Red); ptext = "Falure";  }
-			else { LCD_SetTextColor(LighGreen); ptext = "OK"; }
-			LCD_PutStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, ptext );
+			if(Valid_Zero == 0)	{
+				*(pINFO)->AD_Type.Analog.corrZ = 350;		// def val
+				LCD_PutColorStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, "Falure", Red );
+			}
+			else {
+				LCD_PutColorStrig(rightLimit - 60, AutoCorrection_Upper_Y - 37, 0, "OK", LighGreen );
+
+			}
 			LCD_SetTextColor(Active_BackColor);
 		}
-		else
-		{
+		else {
 			if(Valid_Zero == 1) tValid = 0xAA;
 			else tValid = 0x7F;
 
-			OUT_HostData[0] = pINFO->Mode.ID;				// 0 - CHA; 1 - CHB
-			OUT_HostData[1] = tValid;
+			out_host_data[0] = pINFO->Mode.ID;	// 0 - CHA; 1 - CHB
+			out_host_data[1] = tValid;
 
 			delay_ms(100);
-			Transmit_To_Host((uint8_t)(0x12 + 0x40), OUT_HostData, 2);	// 0xFE - CALIBRATE_ZERO_CMD
+			Transmit_To_Host((uint8_t)(0x12 + 0x40), out_host_data, 2);	// 0xFE - CALIBRATE_ZERO_CMD
 		}
 
 		delay_ms(300);
     }
 
 	/* sending finish calibration packed */
-	if(HostMode != DISABLE)
-	{
-		OUT_HostData[0] = pINFO->Mode.ID;				// 0 - CHA; 1 - CHB
-		OUT_HostData[1] = 0x25;
-		OUT_HostData[2] = 0x52;
+	if(HostMode != DISABLE)	{
+		out_host_data[0] = pINFO->Mode.ID;				// 0 - CHA; 1 - CHB
+		out_host_data[1] = 0x25;
+		out_host_data[2] = 0x52;
 
-		Transmit_To_Host((uint8_t)(0x12 + 0x40), OUT_HostData, 3);	// 0xFE - CAL
+		Transmit_To_Host((uint8_t)(0x12 + 0x40), out_host_data, 3);	// 0xFE - CAL
 
 		Beep_Start(); delay_ms(300);
 		Beep_Start(); delay_ms(100);
@@ -285,6 +300,7 @@ void Correction(void)
 	}
 
 	INFO_A.Mode.EN = RUN; INFO_B.Mode.EN = RUN;
+	return 0;
 }
 
 
@@ -347,23 +363,21 @@ void Update_Progress(uint16_t Val)
 {
 	uint16_t tX;
 	static uint16_t OLD_tX = 0xFFFF;
+	uint8_t out_host_data[5] = {0};
 
-	if(HostMode == DISABLE)
-	{
+	if(HostMode == DISABLE)	{
 		tX = (uint16_t)(((float)Val - 1) / Fillcoeff);
 		Fill_Progress(tX, Auqa);
 	}
-	else
-	{
+	else {
 		tX = ((Val - 2) * 100) / 487;
 
-		if(tX != OLD_tX)
-		{
-			OUT_HostData[0] = pINFO->Mode.ID;				// 0 - CHA; 1 - CHB
-			OUT_HostData[1] = pINFO->AD_Type.Analog.Div;	// operating divider
-			OUT_HostData[2] = tX;							// progress (0 - 100)
+		if(tX != OLD_tX) {
+			out_host_data[0] = pINFO->Mode.ID;				// 0 - CHA; 1 - CHB
+			out_host_data[1] = pINFO->AD_Type.Analog.Div;	// operating divider
+			out_host_data[2] = tX;							// progress (0 - 100)
 
-			Transmit_To_Host((uint8_t)(0x12 + 0x40), OUT_HostData, 3);	// 0x12 - CALIBRATE_ZERO_CMD
+			Transmit_To_Host((uint8_t)(0x12 + 0x40), out_host_data, 3);	// 0x12 - CALIBRATE_ZERO_CMD
 
 			OLD_tX = tX;
 		}

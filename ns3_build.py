@@ -335,23 +335,24 @@ def createArgParser():
 
     parser.add_argument( '--lcd-bits', dest = 'lcd_bits_def', type = str,
                             default = '__LCD_18_BIT__',
-                            metavar = '[LCD]',
+                            metavar = '[__LCD_DEF__]',
                             help = ( 'lcd bit per point option, available options - '
                                      '{__LCD_16_BIT__,__LCD_18_BIT__}, '
                                      '[default:\'__LCD_18_BIT__\'] '
                                       ) )
     parser.add_argument( '--lcd-bus', dest = 'lcd_bus_def', type = str,
                             default = '__LCD_DIRECT__',
-                            metavar = '[LCD]',
+                            metavar = '[__LCD_DEF__]',
                             help = ( 'lcd bus interface option, available options - '
                                      '{__LCD_DIRECT__,__LCD_HC573__}, '
                                      '[default:\'__LCD_DIRECT__\'] ') )
 
-    parser.add_argument( '--swd', action='store_true',
-                            default = False,
-                            help = ( 'swd debug option, if True control lost for outs - '
-                                     '\'INTERLIVE\' and \'HC573 LATCH\'. '
-                                     '[default:\'False\'] ' ) )
+    parser.add_argument( '--defs', dest = 'other_def', type = str,
+                            default = None,
+                            metavar = '[__USER_DEF__]',
+                            help = ( 'other user defines option, '
+                                     '[default:\'\'] ') )
+
     return parser
 
 # ------------------------------------------------------------------------------
@@ -368,11 +369,17 @@ def main():
     newline()
 
     # user defines
+    # args.verbose = True
+    # args.other_def = '__SWD_DEBUG__'
+    # args.other_def = '__POWER_BUTTON_OFF__'
     args.defs = [ args.lcd_bits_def, args.lcd_bus_def ]
+    if args.other_def:
+      args.defs += [d for d in args.other_def.split(' ')]
 
-    # swd debug
-    if args.swd:
-      args.defs.append('__SWD_DEBUG__')
+    if '__SWD_DEBUG__' in args.defs:
+      args.swd = True
+    else:
+      args.swd = False
 
     # inform user
     inform( 'Start with user defs - [ %s ]' % ' ; '.join(args.defs) )

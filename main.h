@@ -50,7 +50,7 @@ typedef enum {
 typedef enum { NONE = (int8_t)0, RUN_AC = (int8_t)1, RUN_DC = (int8_t)2 } Channel_AC_DC_TypeDef;
 
 /* Synchronization work mode, type */
-typedef enum {Sync_NONE = (int8_t)0, Sync_NORM = (int8_t)1, Sync_AUTO = (int8_t)2, Sync_SINGL = (int8_t)3 } SyncMode_TypeDef;
+typedef enum { Sync_NONE = (int8_t)0, Sync_NORM = (int8_t)1, Sync_AUTO = (int8_t)2, Sync_SINGL = (int8_t)3 } SyncMode_TypeDef;
 typedef enum {
 	Sync_Rise = (int8_t)0, Sync_Fall = (int8_t)1,
 	Sync_IN_WIN = (int8_t)2, Sync_OUT_WIN = (int8_t)3,
@@ -76,8 +76,7 @@ typedef struct {
 
 
 /* Структурный тип данных для аналоговых каналов */
-typedef struct
-{
+typedef struct {
 	uint8_t Div;									// положение аналогового делителя
 	uint16_t Zero_PWM_values[12];					// массив значений ШИМ для каждого положения аналогового делителя
 	volatile uint16_t *corrZ;
@@ -101,26 +100,13 @@ typedef struct
 	FunctionalState OldData_PointsFlag[400];		// данные для очистки экрана
 
 	/* Уникальные данные аналоговых или цифрового каналов */
-	union
-	{
+	union {
 		ACH_INFO Analog;
 		DCH_INFO Digital;
-
 	} AD_Type;
 
 	void (*Procesing)(gChannel_MODE CH_Mode);
-
 } CH_INFO_TypeDef;
-
-///* */
-//typedef struct {
-//	uint8_t i2c_address;
-//	int8_t (*Configuration)(void);
-//	int8_t (*Write_Pin)(uint32_t pin, uint8_t state);
-//	int8_t (*Write_Port)(uint32_t val);
-//	int8_t (*Read_Pin)(uint32_t pin);
-//	int8_t (*Read_Port)(void* data);
-//} NS_I2C_GPIO_TypeDef;
 
 /* */
 typedef enum {
@@ -133,10 +119,8 @@ typedef enum {
 } NS_Host_Communicate_TypeDef;
 
 /* Global device work mode/state struct  */
-typedef struct
-{
+typedef struct {
 	uint32_t oscNumPoints;
-
 	OSC_LA_Mode_Typedef Mode;
 	Boolean Interleave;
 	Boolean  autoMeasurments;
@@ -147,20 +131,21 @@ typedef struct
 	FunctionalState BeepState;
 	State_TypeDef  State;
 	Boolean Configurated;
-
 } OscMode_TypeDef;
-
 
 /* Samples window struct */
 typedef struct {
-
 	uint16_t WindowWidh;
 	int16_t WindowPosition;
 	uint16_t WindowsNum;
 	uint32_t Sweep;
-
 } SamplesWin_Typedef;
 
+typedef struct {
+	const uint8_t* u8_data;					// param data pointer
+	const uint16_t start_addr;				// prevParam_start_index + prevParam_num_bytes + 1(CRC)
+	const uint8_t num_bytes;				// param number bytes to Save/Load
+} SettingsParam_TypeDef;
 
 /* Exported variables --------------------------------------------------------*/
 extern CH_INFO_TypeDef *pINFO, INFO_A, INFO_B, DINFO_A;

@@ -24,6 +24,8 @@
 #include "RTC.h"
 #include "IQueue.h"
 #include "ns_esp_07.h"
+#include "ReceiveStateMachine.h"
+
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -35,11 +37,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-extern __IO uint8_t IN_HostData[CMD_MAX_SIZE];
-
 /* Private function prototypes -----------------------------------------------*/
 static void ExHardware_Init_ERROR(void);
-
 
 /* Functions ----------------------------------------------------------------*/
 
@@ -105,7 +104,6 @@ static void Init_GPIO(void)
 	/* Enable and set EXTI9_5 Interrupt priority */
 	NVIC_EnableIRQ(EXTI9_5_IRQn);
 	NVIC_SetPriority(EXTI9_5_IRQn, 9);
-
 
 #ifndef __SWD_DEBUG__
 	/*  Init Inerlive & HC573_LE GPIO */
@@ -321,13 +319,12 @@ static void ADC_Configuration(void)
  * @param  None
  * @retval None
  */
-static void USART_Config(void)
+static void USART_Configuration(void)
 {
 	USART_InitTypeDef USART_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	/* USART resources configuration (Clock, GPIO pins and USART/DMA registers) */
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	/* USART resources configuration (Clock, GPIO pins and USART registers) */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
 	/* Configure USART Rx as input floating */
@@ -357,68 +354,28 @@ static void USART_Config(void)
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
 	USART_Init(USART1, &USART_InitStructure);
-	//USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-
-	/* Enable USART1 DMA Rx request */
-	USART_DMACmd(USART1, USART_DMAReq_Rx , ENABLE);
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
 
 	/* Enable the USART1 */
-	USART_Cmd(USART1, ENABLE);		/* Enable the USART1 */
+	USART_Cmd(USART1, ENABLE);
 
-	/* Enable USART1 RX DMA1 Channel */
-	DMA1_Channel5->CCR |= DMA_CCR5_EN;
+	NVIC_EnableIRQ(USART1_IRQn);
+	NVIC_SetPriority(USART1_IRQn, 0);
 }
 
 /**
- * @brief  USART_DMA, used for host comunication, transfer data
+ * @brief  USART_DeConfiguration
  * @param  None
  * @retval None
  */
-static void USART_DMA_Configuration(void)
-{
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-
-	DMA_DeInit(DMA1_Channel5);
-	DMA1_Channel5->CCR &= ~DMA_CCR5_EN; 							// Disable
-	DMA1_Channel5->CPAR = (uint32_t)&USART1->DR; 					// Periph addr
-	DMA1_Channel5->CMAR = (uint32_t)&(Host_GetIQueue(0)->Data[0]);	// Memory addr
-	DMA1_Channel5->CCR &= ~DMA_CCR5_DIR; 							// Periph -> Memory
-	DMA1_Channel5->CNDTR = (uint32_t)0x03;							// Data cnt
-	DMA1_Channel5->CCR &= ~DMA_CCR1_PINC; 							// Perip addr not increment
-	DMA1_Channel5->CCR |= DMA_CCR1_MINC; 							// Memory addr increment
-	DMA1_Channel5->CCR &= ~DMA_CCR1_PSIZE; 							// Periph data 8 bit
-	DMA1_Channel5->CCR &= ~DMA_CCR1_MSIZE; 							// Memory data 8 bit
-	DMA1_Channel5->CCR &= ~DMA_CCR1_CIRC; 							// Not circular mode
-	DMA1_Channel5->CCR |= DMA_Priority_VeryHigh; 					// Very High priority
-
-	USART_Config();
-
-	DMA_ITConfig(DMA1_Channel5, DMA_IT_TC, ENABLE);
-
-	NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-	NVIC_SetPriority(DMA1_Channel5_IRQn, 0);
-}
-
-/**
- * @brief  USART_DMA_DeConfiguration
- * @param  None
- * @retval None
- */
-static void USART_DMA_DeConfiguration(void)
+static void USART_DeConfiguration(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	DMA_ITConfig(DMA1_Channel5, DMA_IT_TC, DISABLE);
-	NVIC_DisableIRQ(DMA1_Channel5_IRQn);
-
+	USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
+	NVIC_DisableIRQ(USART1_IRQn);
 	USART_Cmd(USART1, DISABLE);
-	USART_DMACmd(USART1, USART_DMAReq_Rx , DISABLE);
 
-	DMA1_Channel5->CCR &= ~DMA_CCR5_EN;
-	DMA_DeInit(DMA1_Channel5);
-
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, DISABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, DISABLE);
 
 	/* Configure USART Rx/Tx as input floating */
@@ -457,8 +414,10 @@ static void LCD_PinsInit(void)
 	set_RD_LCD(GPIOC, GPIO_Pin_12);		    // Не используется, назначаем на любой свободный вывод, например PC.12
 	set_CS_LCD(GPIOC, GPIO_Pin_0);		    // Сигнал Chip Select, PC.0
 
-#if defined (__LCD_HC573__) && !defined(__SWD_DEBUG__)
+#ifdef __LCD_HC573__
+	#ifndef __SWD_DEBUG__
 	set_HC573_LE_LCD(GPIOA, GPIO_Pin_14);
+	#endif
 #endif
 }
 
@@ -560,12 +519,12 @@ void External_Peripheral_Init(void)
 	LCD_Init();
 
 	/* Set bit color (DataWidth, NumberDepthBits) */
-#ifdef __LCD_16_BIT__
+#ifdef __LCD_HC573__
+	LCD_Set_DataWidth_ColorBitDepth(16, 18);	// HC573
+#elif __LCD_16_BIT__
 	LCD_Set_DataWidth_ColorBitDepth(8, 16);		// 16 bit color
 #elif defined(__LCD_18_BIT__)
 	LCD_Set_DataWidth_ColorBitDepth(8, 18);		// 18 bit color
-#elif defined(__LCD_HC573__)
-	LCD_Set_DataWidth_ColorBitDepth(16, 18);	// HC573
 #endif
 
 	/* Set "Album" mode LCD, clear */
@@ -637,19 +596,19 @@ int8_t Host_Comunication_Configuration(void* host_mode)
 
 		if ( *mode == Host_OFF ) {
 			/* MCU USART OFF */
-			USART_DMA_DeConfiguration();
+			USART_DeConfiguration();
 			/* OFF ESP module */
 			ESP_State_OFF();
 		}
 		else if ( *mode == Host_ESP_Boot_Mode ) {
 			/* MCU USART OFF */
-			USART_DMA_DeConfiguration();
+			USART_DeConfiguration();
 			/* ON ESP module, CP2102<->ESP bridge mode, Bootloader */
 			ESP_State_Bootloader();
 		}
 		else if ( *mode == Host_Bridge_Mode ) {
 			/* MCU USART OFF */
-			USART_DMA_DeConfiguration();
+			USART_DeConfiguration();
 			/* ON ESP module, CP2102<->ESP bridge mode */
 			ESP_State_Interconnect_CP2102();
 		}
@@ -657,7 +616,7 @@ int8_t Host_Comunication_Configuration(void* host_mode)
 			/* OFF ESP module */
 			ESP_State_OFF();
 			/* MCU USART ON */
-			USART_DMA_Configuration();
+			USART_Configuration();
 		}
 		else if (*mode == Host_ESP_Mode) {
 
@@ -665,13 +624,13 @@ int8_t Host_Comunication_Configuration(void* host_mode)
 
 			if(CP2102_ON == Bit_RESET) {
 				/* MCU USART ON */
-				USART_DMA_Configuration();
+				USART_Configuration();
 				/* ON ESP module, MCU<->ESP bridge mode */
 				ESP_State_Host_MCU();
 			}
 			else {
 				/* MCU USART OFF */
-				USART_DMA_DeConfiguration();
+				USART_DeConfiguration();
 				/* OFF ESP module */
 				ESP_State_OFF();
 
@@ -680,28 +639,13 @@ int8_t Host_Comunication_Configuration(void* host_mode)
 		}
 	}
 
+	/* Reset USART recive state machine */
+	ReceivedStateMachine_Reset();
+
 	return state;
 }
 
-/**
- * @brief  Start_Bootloader
- * @param  None
- * @retval None
- */
-void Host_USART_Configuration(void)
-{
 
-}
-
-/**
- * @brief  Start_Bootloader
- * @param  None
- * @retval None
- */
-void Host_USART_SetState(FunctionalState state)
-{
-
-}
 
 
 

@@ -39,17 +39,18 @@ NS_I2C_GPIO_TypeDef *ns_i2c_gpio;
 int8_t I2CIO_Configuration(NS_I2C_GPIO_TypeDef* gpio)
 {
 	uint8_t data;
+	int8_t status = 0;
 
 	if(gpio != (void*)0) {
 		ns_i2c_gpio = gpio;
 		ns_i2c_gpio->Configuration();
 
 		I2CIO_Read_Port(&data);
-		if(data == 0) {
-			return 0;
-		}
+
+		if(data == 0) status = 0;
+		else status = -1;
 	}
-	return -1;
+	return status;
 }
 
 /**

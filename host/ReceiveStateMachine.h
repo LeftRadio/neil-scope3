@@ -1,43 +1,42 @@
 /**
   ******************************************************************************
-  * @file	 	IQueue.h
-  * @author  	Left Radio
+  * @file       ReceivedStateMachine.h
+  * @author     Left Radio
   * @version
   * @date
-  * @brief		header
+  * @brief      header
   ******************************************************************************
 **/
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef _IQUEUE__H
-#define _IQUEUE__H
+#ifndef _RECIVEIVE_STATE__H
+#define _RECIVEIVE_STATE__H
 
 /* Includes ------------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
-#define CMD_MAX_SIZE		10
-#define IQUEUE_SIZE			4
-
 /* Exported macro ------------------------------------------------------------*/
 /* Exported typedef ----------------------------------------------------------*/
-typedef struct {
-	Boolean IsEmpty;
-	uint8_t Data[CMD_MAX_SIZE];
-	uint8_t CMD_Index;
-} IQueue_TypeDef;
+typedef enum { MSG_START, MSG_CODE, MSG_LEN, MSG_DATA, MSG_END, MSG_COMPLETE } ReceivedStates_TypeDef;
+typedef struct
+{
+    ReceivedStates_TypeDef Stage;
+    uint8_t Data[10];
+    uint8_t Data_Cnt;
+    uint8_t Command_Index;
+    Boolean Complite;
+} ReceivedStateMachine_TypeDef;
 
 /* Exported variables --------------------------------------------------------*/
 /* Exported function ---------------------------------------------------------*/
-void Host_IQueue_Initialization(void);
-void Host_SetIQueue(uint8_t* data, uint8_t cmd_index);
-IQueue_TypeDef* Host_GetIQueue(uint8_t index);
-uint8_t Host_IQueue_GetEmptyIndex(void);
-void Host_IQueue_Clear(uint8_t index);
-void Host_IQueue_ClearAll(void);
-int8_t Host_IQueue_GetWorkIQueue(void);
+void ReceivedStateMachine_Reset(void);
+void ReceivedStateMachine_Event(uint8_t byte);
+
+__attribute__((weak)) void ReceivedStateMachine_CompleteCallBack(uint8_t command_index, uint8_t* command_data);
 
 
 
-#endif /* _IQUEUE__H */
+
+#endif /* _RECIVEIVE_STATE__H */
 /*********************************************************************************************************
       END FILE
 *********************************************************************************************************/

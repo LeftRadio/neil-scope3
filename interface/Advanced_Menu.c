@@ -39,26 +39,15 @@ Menu_Struct_TypeDef AdvancedMenu = {
 		DOWN,
 		UP,
 		{
-				&btnClose, &btnEraseEeprom, &btnSave,
+				&btnBootloader, &btnEraseEeprom, &btnSave,
 				&btnEmpty, &btnI2C_ADDR, &btnI2C_GPIO,
-				&btnHostMode
+				&btnHostMode, &btnClose
 		},
 		AdvancedMenu_DrawCallback,
 };
 
 uint8_t I2C_ADDR = 0x00;
 char I2C_ADDR_Text[5] = "0x00";
-
-//int8_t I2C_GPIO_Index = 0;
-
-//NS_I2C_GPIO_TypeDef* gpios[] = {
-//		(void*)0,
-//		&pca9675,
-//		&max7320
-//};
-
-//int8_t HostModeIndex = 0;
-
 
 /* Extern variables ----------------------------------------------------------*/
 /* Functions -----------------------------------------------------------------*/
@@ -139,6 +128,18 @@ static void AdvancedMenu_DrawCallback(DrawState state)
 
 
 /**
+  * @brief  Jump_To_Boot
+  * @param  None
+  * @retval None
+  */
+void Jump_To_Boot(void)
+{
+	if(ButtonsCode != OK) return;
+
+	Start_Bootloader();
+}
+
+/**
   * @brief  AdvancedMenu_Closed
   * @param  None
   * @retval None
@@ -178,18 +179,15 @@ void Perform_Erase_EEPROM(void)
   */
 void Save_pref(void)
 {
-	if(ButtonsCode == OK)
-	{
-		if(SavePreference() != 0)
-		{
-			LCD_SetTextColor(0xF800);
-			Show_Message("Preference save error!");
-		}
-		else
-		{
-			LCD_SetTextColor(LightGray2);
-			Show_Message("Preference save successful");
-		}
+	if(ButtonsCode != OK) return;
+
+	if(SavePreference() != 0) {
+		LCD_SetTextColor(0xF800);
+		Show_Message("Preference save error!");
+	}
+	else {
+		LCD_SetTextColor(LightGray2);
+		Show_Message("Preference save successful");
 	}
 }
 
