@@ -1,0 +1,3 @@
+[submodule "libs/ngl"]
+	path = libs/ngl
+	url = https://github.com/LeftRadio/ngl

@@ -1,3 +1,4 @@
+# include libs/ngl/Makefile
 
 ######################################
 # System
@@ -193,15 +194,18 @@ ifeq ($(DEBUG), 1)
 LDSCRIPT = arm-gcc-link-debug.ld
 endif
 
-LIBS = -lGL_HX8352_flash -lc -lm -lnosys
-LIBDIR = drivers/lcd
+LIBS = -lGL_HX8352_flash -lc -lm -lnosys -lngl
+LIBDIRS_F = -Ldrivers/lcd -Llibs/ngl/build
 
-LDFLAGS = $(MCU) -Wall -g -nostartfiles "-Wl,-Map=$(BUILD_DIR)/$(TARGET).map" -T$(LDSCRIPT) -L$(LIBDIR) $(LIBS) -Wl,--gc-sections
+LDFLAGS = $(MCU) -Wall -g -nostartfiles "-Wl,-Map=$(BUILD_DIR)/$(TARGET).map" -T$(LDSCRIPT) $(LIBDIRS_F) $(LIBS) -Wl,--gc-sections
 
 #######################################
 # build the application
 #######################################
 all:
+	@echo building submodule ngl...
+	$(MAKE) -C libs/ngl
+
 	@echo building $(TARGET)...
 	$(MAKE) $(BUILD_DIR)/$(TARGET).elf
 	$(MAKE) $(BUILD_DIR)/$(TARGET).hex

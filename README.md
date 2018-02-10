@@ -24,22 +24,35 @@ If you need more information, please follow these links:
 
 
 ## Build
+1. Install [gcc toolchain](https://launchpad.net/gcc-arm-embedded/+download).
+2. Clone this repository
+```bash
+$ git clone https://github.com/LeftRadio/neil-scope3
+```
+3. init submodules - bootloader, libngl, etc.
+```bash
+$ git submodule update --init --recursive
+```
 
+### Makefile
+1. If needed edit DEBUG/LCD/etc. defines in Makefile
+2. Run build (for Windows use mingw32-make )
+```bash
+$ cd neil-scope3
+$ make
+```
+
+### Python3
 1. Install [Python3](https://www.python.org/downloads/)
-2. Install [gcc toolchain](https://launchpad.net/gcc-arm-embedded/+download).
-3. Download and unpack this repository
-
-4. From unpacked repository put in console:
-
->> python ns3_build.py - h
-
-5. Run build for you LCD hardware, for example:
-
->> python ns3_build.py --lcd-bits __LCD_16_BIT__ --lcd-bus __LCD_DIRECT__
-
-
-*You can also build NeilScope3 with CoIDE, EM::Blocks, Eclipse+ARM toolchain etc.
-
+2. See help
+```bash
+$ cd neil-scope3
+$ python ns3_build.py - h
+```
+3. Run build for you LCD hardware, for example
+```bash
+$ python ns3_build.py --lcd-bits __LCD_16_BIT__ --lcd-bus __LCD_DIRECT__
+```
 
 ## Download NeilScope3 Flash
 
