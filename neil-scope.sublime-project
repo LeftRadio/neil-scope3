@@ -1,0 +1,39 @@
+{
+    "build_systems":
+    [
+        {
+            "cmd": ["make"],
+            "name": "ARM build",
+            "working_dir": "${project_path}",
+            "file_regex": "^(.*):(\\d+):(\\d+):\\s*(.*)$"
+        }
+    ],
+    "folders":
+    [
+        {
+            "follow_symlinks": true,
+            "path": "."
+        }
+    ],
+
+    "SublimeLinter":
+    {
+        "linters":
+        {
+            "clang":
+            {
+                "include_dirs":
+                [
+                    "${project}/cmsis",
+                    "${project}/cmsis_boot"
+                ],
+                // "extra_flags":"-DSTM32F10X_MD_VL"
+            }
+        }
+    },
+    "settings":
+    {
+        "sublimegdb_workingdir": "${project_path:build/}",
+        "sublimegdb_commandline": "arm-none-eabi-gdb --interpreter=mi *.elf"
+    }
+}
