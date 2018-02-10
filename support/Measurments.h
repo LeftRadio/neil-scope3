@@ -9,10 +9,10 @@
 **/
 
 #ifndef __MEASURMENTS_H
-#define __MEASURMENTS_H 
+#define __MEASURMENTS_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "FFT.h"
+#include "fft.h"
 
 /* Exported typedef ----------------------------------------------------------*/
 typedef struct

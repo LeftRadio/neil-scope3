@@ -12,7 +12,7 @@
 #include "stm32f10x.h"
 #include "defines.h"
 #include "ns_esp_07.h"
-#include "SysTick.h"
+#include "systick.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/

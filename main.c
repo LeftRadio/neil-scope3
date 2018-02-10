@@ -14,7 +14,7 @@
 #include "main.h"
 #include "init.h"
 #include "Settings.h"
-#include "SysTick.h"
+#include "systick.h"
 #include "User_Interface.h"
 #include "EPM570.h"
 #include "Synchronization.h"
