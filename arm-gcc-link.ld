@@ -1,16 +1,16 @@
 OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 /* Internal Memory Map*/
 MEMORY
-{{
-	rom (rx)  : ORIGIN = {rom_start}, LENGTH = 0x00020000
+{
+	rom (rx)  : ORIGIN = 0x08002000, LENGTH = 0x00020000
 	ram (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00005000
-}}
+}
 
 _eram = 0x20000000 + 0x00005000;
 SECTIONS
-{{
+{
 	.text :
-	{{
+	{
 		KEEP(*(.isr_vector))
 		*(.text*)
 
@@ -34,18 +34,18 @@ SECTIONS
 		*(.rodata*)
 
 		KEEP(*(.eh_fram e*))
-	}} > rom
+	} > rom
 
 	.ARM.extab :
-	{{
+	{
 		*(.ARM.extab* .gnu.linkonce.armextab.*)
-	}} > rom
+	} > rom
 
 	__exidx_start = .;
 	.ARM.exidx :
-	{{
+	{
 		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
-	}} > rom
+	} > rom
 	__exidx_end = .;
 	__etext = .;
 
@@ -53,7 +53,7 @@ SECTIONS
 	_sidata = __etext;
 
 	.data : AT (__etext)
-	{{
+	{
 		__data_start__ = .;
 
 		/* _sdata is used in coide startup code */
@@ -89,10 +89,10 @@ SECTIONS
 
 		/* _edata is used in coide startup code */
 		_edata = __data_end__;
-	}} > ram
+	} > ram
 
 	.bss :
-	{{
+	{
 		. = ALIGN(4);
 		__bss_start__ = .;
 		_sbss = __bss_start__;
@@ -101,25 +101,25 @@ SECTIONS
 		. = ALIGN(4);
 		__bss_end__ = .;
 		_ebss = __bss_end__;
-	}} > ram
+	} > ram
 
 	.heap (COPY):
-	{{
+	{
 		__end__ = .;
 		_end = __end__;
 		end = __end__;
 		*(.heap*)
 		__HeapLimit = .;
-	}} > ram
+	} > ram
 
 	/* .stack_dummy section doesn't contains any symbols. It is only
 	* used for linker to calculate size of stack sections, and assign
 	* values to stack symbols later */
 	.co_stack (NOLOAD):
-	{{
+	{
 		. = ALIGN(8);
 		*(.co_stack .co_stack.*)
-	}} > ram
+	} > ram
 
 	/* Set stack top to end of ram , and stack limit move down by
 	* size of stack_dummy section */
@@ -129,4 +129,4 @@ SECTIONS
 
 	/* Check if data + heap + stack exceeds ram  limit */
 	ASSERT(__StackLimit >= __HeapLimit, "region ram  overflowed with stack")
-}}
+}

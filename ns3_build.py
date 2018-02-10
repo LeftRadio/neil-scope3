@@ -203,26 +203,11 @@ class Link(NS3_BuildBase):
         '-L%s -lgl_hx8352_flash -lm -lgcc -lc' % (self.env.root_dir + '\\drivers\\lcd')
         ]
 
-    # format link file
-    self.ld = self.env.root_dir + '\\arm-gcc-link.ld'
-    template = self.env.root_dir + '\\ns3_link_template'
-
-    if os.path.exists(template):
-
-      with open(template, 'rt') as f:
-        tmp = f.read()
-
-      if swd:
-        tmp = tmp.format(rom_start = '0x08000000')
-      else:
-        tmp = tmp.format(rom_start = '0x08002000')
-
-      with open(self.ld, 'wt') as f:
-        f.write(tmp)
-
+    # link file
+    if swd:
+      self.ld = self.env.root_dir + '\\arm-gcc-link-debug.ld'
     else:
-      error('link file template % not found! Stop.' % template)
-
+      self.ld = self.env.root_dir + '\\arm-gcc-link.ld'
 
   def _prepare(self):
     """ prepare to run compiler """
