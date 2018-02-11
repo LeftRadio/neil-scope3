@@ -204,8 +204,9 @@ LDFLAGS = $(MCU) -Wall -g -nostartfiles "-Wl,-Map=$(BUILD_DIR)/$(TARGET).map" -T
 #######################################
 all:
 	@echo building submodule ngl...
-	$(MAKE) -C libs/ngl
-
+	$(MAKE) -C libs/ngl all OS="$(OS)" CC="$(CC)" MCU="$(MCU)" C_DEFS="-DARM_MATH_CM3" DEBUG="$(DEBUG)" OPT="-O3"
+	@echo -----------------------------
+	@echo -----------------------------
 	@echo building $(TARGET)...
 	$(MAKE) $(BUILD_DIR)/$(TARGET).elf
 	$(MAKE) $(BUILD_DIR)/$(TARGET).hex
@@ -248,7 +249,9 @@ $(BUILD_DIR):
 # clean up
 #######################################
 clean:
-	@echo - cleaning $(BUILD_DIR)...
+	$(MAKE) -C libs/ngl clean OS="$(OS)"
+
+	@echo cleaning neil-scope3 $(BUILD_DIR)...
 ifeq ($(OS),Windows)
 	($(BUILD_DIR):&(rd /s /q "$(BUILD_DIR)" 2> NUL))&
 endif
