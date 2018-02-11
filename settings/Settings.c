@@ -11,6 +11,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "Settings.h"
 #include "Processing_and_output.h"
+#include "Host.h"
 #include "EPM570.h"
 #include "Synchronization.h"
 #include "eeprom_WR_RD.h"
@@ -47,6 +48,8 @@ static void Settings_Message(char* msg, uint16_t color)
 
 	memset(old_msg, 0, 50);
 	memcpy(old_msg, msg, strlen(msg));
+
+	host_send_str(msg);
 }
 
 /**
@@ -172,6 +175,8 @@ void LoadPreference(void)
 	uint8_t load_success = 0;
 	char m_txt[50] = "param ";
 	uint16_t m_color;
+
+	host_send_str("start load stored preferences...");
 
 	Settings_Message("For skip load settings push 'DOWN'", Red);
 

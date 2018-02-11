@@ -12,6 +12,7 @@
 #include "stm32f10x.h"
 #include "defines.h"
 #include "init.h"
+#include "Host.h"
 #include "systick.h"
 #include "main.h"
 #include "init.h"
@@ -432,6 +433,8 @@ static void EPM570_Init(void)
 	EPM_ErrorStatus regInit;
 	uint16_t Xstr;
 
+	host_send_str("start EPM570 init registers...");
+
 	/* Инициализация выводов МК под связь с EPM570 */
 	EPM570_Signals_Init();
 
@@ -455,8 +458,8 @@ static void EPM570_Init(void)
 	}
 
 	Xstr = LCD_PutColorStrig(20, 170, 0, "SUCCESSFUL ", LightGreen);
-	LCD_PutColorStrig(Xstr, 170, 0, "write/read EPM570 registers...", White);
-	host_send_str("SUCCESSFUL write/read EPM570 registers...");
+	LCD_PutColorStrig(Xstr, 170, 0, "write/read EPM570 registers", White);
+	host_send_str("SUCCESSFUL write/read EPM570 registers");
 
 	delay_ms(1);
 	EPM570_Set_numPoints(20);
@@ -465,16 +468,17 @@ static void EPM570_Init(void)
 
 	if(EPM570_SRAM_Write() == STOP)
 	{
-		LCD_PutColorStrig(20, 150, 0, "ERROR write cycle SRAM...", Red);
-		host_send_str("ERROR write cycle SRAM...");
+		LCD_PutColorStrig(20, 150, 0, "ERROR write cycle SRAM", Red);
+		host_send_str("ERROR write cycle SRAM");
 		ExHardware_Init_ERROR();
 	}
 
 	EPM570_SRAM_Read();
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
 	Xstr = LCD_PutColorStrig(20, 150, 0, "SUCCESSFUL ", LightGreen);
-	LCD_PutColorStrig(Xstr, 150, 0, "write/read cycle SRAM...", White);
-	host_send_str("SUCCESSFUL write/read cycle SRAM...");
+	LCD_PutColorStrig(Xstr, 150, 0, "write/read cycle SRAM", White);
+	host_send_str("SUCCESSFUL write/read cycle SRAM");
+	host_send_str("EPM570 init OK");
 }
 
 /**
@@ -526,17 +530,27 @@ void Global_Init(void)
  */
 void External_Peripheral_Init(void)
 {
+	/* config USART for debug messages */
+	ESP_State_OFF();
+	USART_Configuration();
+
+	host_send_str("start of external HW initialization...");
+
 	/* LCD pins & controller Init */
 	LCD_PinsInit();
+	host_send_str("LCD GPIO init");
 	LCD_Init();
 
 	/* Set bit color (DataWidth, NumberDepthBits) */
 #ifdef __LCD_HC573__
 	LCD_Set_DataWidth_ColorBitDepth(16, 18);	// HC573
+	host_send_str("LCD set 16bit data, 18bit color");
 #elif __LCD_16_BIT__
 	LCD_Set_DataWidth_ColorBitDepth(8, 16);		// 16 bit color
+	host_send_str("LCD set 8bit data, 16bit color");
 #elif defined(__LCD_18_BIT__)
 	LCD_Set_DataWidth_ColorBitDepth(8, 18);		// 18 bit color
+	host_send_str("LCD configured with 8bit data, 18bit color");
 #endif
 
 	/* Set "Album" mode LCD, clear */
@@ -547,7 +561,6 @@ void External_Peripheral_Init(void)
 	/* Set Font and print verification peripheral message */
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
 	LCD_PutColorStrig(75, 200, 0, "VERIFICATION PERIPHERAL", LightGray3);
-	host_send_str("verify external peripheral...");
 	delay_ms(10);
 
 	/* Инициализируем порты под связь с EPM570 и инициализируем регистры ПЛИС */
@@ -555,12 +568,14 @@ void External_Peripheral_Init(void)
 
 	/* Инициализируем аналоговые делители в начальное положение,
 	   Divider_Position_MAX задефайнен в Analog.h */
+	host_send_str("Set analog dividers in the initial position...");
 	Change_AnalogDivider(CHANNEL_A, Divider_Position_MAX);
 	Change_AnalogDivider(CHANNEL_B, Divider_Position_MAX);
 
+	host_send_str("end of external HW initialization, all OK");
+
 	Beep_Start();
 	delay_ms(500);
-
 }
 
 /**
