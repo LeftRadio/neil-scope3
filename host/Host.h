@@ -36,6 +36,8 @@ void Transmit_DataBuf_To_Host(void);
 void Host_RequestReset(void);
 FlagStatus Host_GetTerminateCmd(void);
 
+void host_send_str(const char *str);
+
 uint8_t CRC8_Buff(uint8_t *pBuff, uint16_t NumBytes);
 uint8_t CRC8(uint8_t Byte, uint8_t crc);
 

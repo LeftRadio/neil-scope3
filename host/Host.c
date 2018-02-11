@@ -1,10 +1,10 @@
 ﻿/**
   ******************************************************************************
-  * @file	 	Host.c
-  * @author  	Left Radio
-  * @version 	1.5.6
+  * @file         Host.c
+  * @author      Left Radio
+  * @version     1.5.6
   * @date
-  * @brief		NeilScope3 Host sourse
+  * @brief        NeilScope3 Host sourse
   ******************************************************************************
 **/
 
@@ -33,10 +33,10 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Error type and codes defines */
-#define ERROR_RESPOND					0x7F
-#define ErrorCRC						0x01
-#define ErrorData						0x02
-#define ErrorBusy						0x03
+#define ERROR_RESPOND                    0x7F
+#define ErrorCRC                         0x01
+#define ErrorData                        0x02
+#define ErrorBusy                        0x03
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -60,27 +60,27 @@ static void host_delay(volatile uint32_t delay_cnt);
   */
 void Recive_Host_Data(uint8_t IQueueIndex)
 {
-  	int8_t status;
-	IQueue_TypeDef *IQueue = Host_GetIQueue(IQueueIndex);
+      int8_t status;
+    IQueue_TypeDef *IQueue = Host_GetIQueue(IQueueIndex);
 
-	/* Decoding and run command request */
-	status = Decoding_Command(IQueue->CMD_Index, &IQueue->Data[2]);
+    /* Decoding and run command request */
+    status = Decoding_Command(IQueue->CMD_Index, &IQueue->Data[2]);
 
-	/* Return message code */
-	if (status == 0) {
-		IQueue->Data[0] = IQueue->Data[0] + 0x40;
-	}
-	else {
-		IQueue->Data[0] = ERROR_RESPOND;
-	}
+    /* Return message code */
+    if (status == 0) {
+        IQueue->Data[0] = IQueue->Data[0] + 0x40;
+    }
+    else {
+        IQueue->Data[0] = ERROR_RESPOND;
+    }
 
-  	/* Processing request */
-	if(gHostRequest.State == ENABLE) {
-		Host_RequestProcessing(IQueue);
-	}
-	else {
-		Transmit_To_Host(IQueue->Data[0], &IQueue->Data[2], IQueue->Data[1]);
-	}
+      /* Processing request */
+    if(gHostRequest.State == ENABLE) {
+        Host_RequestProcessing(IQueue);
+    }
+    else {
+        Transmit_To_Host(IQueue->Data[0], &IQueue->Data[2], IQueue->Data[1]);
+    }
 }
 
 /**
@@ -90,41 +90,52 @@ void Recive_Host_Data(uint8_t IQueueIndex)
   */
 static __inline void Host_Send_Byte(uint8_t byte)
 {
-	USART1->DR = byte;
-	while((USART1->SR & USART_FLAG_TXE) == (uint16_t)RESET);
+    USART1->DR = byte;
+    while((USART1->SR & USART_FLAG_TXE) == (uint16_t)RESET);
+}
+
+/**
+  * @brief  send string(UTF-8) to host
+  * @param  string pointer
+  * @retval None
+  */
+void host_send_str(const char *str) {
+    /* */
+    while(*str != 0) {
+        Host_Send_Byte((uint8_t)(*str));
+        str++;
+    }
+    /* */
+    Host_Send_Byte( 0x0D );
+    Host_Send_Byte( 0x0A );
 }
 
 /**
   * @brief  Transmit_To_Host
   * @param  *pData - pointer to transmited data
-  * 		DataLen - num bytes to transmit
+  *         DataLen - num bytes to transmit
   * @retval None
   */
-void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen)
-{
-	uint8_t header[3] = {0x5B, Respond_CMD, DataLen};
-	uint8_t Control_CRC = 0;
-	uint16_t i;
-
-	/* Send header */
-	for(i = 0; i < 3; i++) {
-		Host_Send_Byte(header[i]);
-		Control_CRC = CRC8(header[i], Control_CRC);
-	}
-
-	/* Send data */
-	for(i = 0; i < DataLen; i++) {
-		Host_Send_Byte(*(pData+i));
-		Control_CRC = CRC8(*(pData+i), Control_CRC);
-	}
-
-	/* Send CRC byte */
-	Host_Send_Byte( CRC8(0, Control_CRC) );
-
-	/* Stop if single-shot mode  */
-	if((gSyncState.Mode == Sync_SINGL) && (gOSC_MODE.State == RUN) && (EPM570_SRAM_GetWriteState() == COMPLETE)) {
-		gOSC_MODE.State = STOP;
-	}
+void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen) {
+    uint8_t header[3] = {0x5B, Respond_CMD, DataLen};
+    uint8_t Control_CRC = 0;
+    uint16_t i;
+    /* Send header */
+    for(i = 0; i < 3; i++) {
+        Host_Send_Byte(header[i]);
+        Control_CRC = CRC8(header[i], Control_CRC);
+    }
+    /* Send data */
+    for(i = 0; i < DataLen; i++) {
+        Host_Send_Byte(*(pData+i));
+        Control_CRC = CRC8(*(pData+i), Control_CRC);
+    }
+    /* Send CRC byte */
+    Host_Send_Byte( CRC8(0, Control_CRC) );
+    /* Stop if single-shot mode  */
+    if((gSyncState.Mode == Sync_SINGL) && (gOSC_MODE.State == RUN) && (EPM570_SRAM_GetWriteState() == COMPLETE)) {
+        gOSC_MODE.State = STOP;
+    }
 }
 
 
@@ -135,132 +146,132 @@ void Transmit_To_Host(uint8_t Respond_CMD, uint8_t *pData, uint8_t DataLen)
   */
 void Transmit_DataBuf_To_Host(void)
 {
-	uint8_t ResponseDataBufHeader[8] = { 0x5B, 0x70, 0x04, 0x00, 0x00, 0x00, 0x00, 0xFF };
-	uint8_t Data_A, Data_B, *pData;
-	uint8_t Control_CRC = 0;
-	uint32_t i;
-	uint32_t FullPacked = 0, DataCnt = 0;
-	uint32_t DataLen = 0;
+    uint8_t ResponseDataBufHeader[8] = { 0x5B, 0x70, 0x04, 0x00, 0x00, 0x00, 0x00, 0xFF };
+    uint8_t Data_A, Data_B, *pData;
+    uint8_t Control_CRC = 0;
+    uint32_t i;
+    uint32_t FullPacked = 0, DataCnt = 0;
+    uint32_t DataLen = 0;
 
-//	__disable_irq();
+//    __disable_irq();
 
-	/* select Channel */
-	if((gOSC_MODE.Interleave == TRUE) || (pINFO == &INFO_A))
-	{
-		pData = &Data_A;
-		ResponseDataBufHeader[6] = CHANNEL_A;
-	}
-	else if (pINFO == &INFO_B)
-	{
-		pData = &Data_B;
-		ResponseDataBufHeader[6] = CHANNEL_B;
-	}
-	else
-	{
-		if (RLE_CodeSend == TRUE) pData = &Data_B;
-		else pData = &Data_A;
-		ResponseDataBufHeader[6] = CHANNEL_DIGIT;
-	}
+    /* select Channel */
+    if((gOSC_MODE.Interleave == TRUE) || (pINFO == &INFO_A))
+    {
+        pData = &Data_A;
+        ResponseDataBufHeader[6] = CHANNEL_A;
+    }
+    else if (pINFO == &INFO_B)
+    {
+        pData = &Data_B;
+        ResponseDataBufHeader[6] = CHANNEL_B;
+    }
+    else
+    {
+        if (RLE_CodeSend == TRUE) pData = &Data_B;
+        else pData = &Data_A;
+        ResponseDataBufHeader[6] = CHANNEL_DIGIT;
+    }
 
-	if(Get_AutoDivider_State(pINFO->Mode.ID) == ENABLE) ResponseDataBufHeader[7] = pINFO->AD_Type.Analog.Div;
+    if(Get_AutoDivider_State(pINFO->Mode.ID) == ENABLE) ResponseDataBufHeader[7] = pINFO->AD_Type.Analog.Div;
 
-	/* Roll back to start read data point */
-	EPM570_SRAM_ReadState(DISABLE);
-	EPM570_SRAM_Shift(0x7fffffff, SRAM_READ_DOWN);
+    /* Roll back to start read data point */
+    EPM570_SRAM_ReadState(DISABLE);
+    EPM570_SRAM_Shift(0x7fffffff, SRAM_READ_DOWN);
 
-	/* Prepare SRAM to read, read and send data to Host */
-	EPM570_SRAM_ReadState(ENABLE);
-
-
-	DataLen = gHostRequest.DataLen;
-	while(gHostRequest.DataLen > 64000){ gHostRequest.DataLen -= 64000; FullPacked++; }
-	while((FullPacked > 0) || (gHostRequest.DataLen > 0))
-	{
-		if(FullPacked == 0)
-		{
-			DataCnt = gHostRequest.DataLen;
-			gHostRequest.DataLen = 0;
-		}
-		else
-		{
-			DataCnt = 64000;
-			FullPacked--;
-		}
-
-		if((DataLen > 64000) && (DataCnt != 0)) host_delay(2000000);
-
-		TIM2->DIER &= ~TIM_DIER_UIE;
-
-		Control_CRC = 0;
-		ResponseDataBufHeader[3] = (uint8_t)(DataCnt >> 10);
-		ResponseDataBufHeader[4] = (uint8_t)((DataCnt & 0x03FC) >> 2);
-		ResponseDataBufHeader[5] = (uint8_t)((DataCnt & 0x03) << 6);
-
-		/* sending header */
-		for(i = 0; i < 8; i++) {
-			Host_Send_Byte(ResponseDataBufHeader[i]);
-			Control_CRC = CRC8(ResponseDataBufHeader[i], Control_CRC);
-		}
-
-		for(i = 0; i < DataCnt; i++)
-		{
-			if( (gOSC_MODE.Mode == OSC_MODE) && (gOSC_MODE.Interleave == TRUE) )
-			{
-				EPM570_GPIO_RS(SET);
-				Data_A = ~(GPIOB->IDR >> 8);
-
-				Host_Send_Byte(*pData);
-				Control_CRC = CRC8(*pData, Control_CRC);
-
-				EPM570_GPIO_RS(RESET);
-				Data_A = ~(GPIOB->IDR >> 8);
-				Data_A -= InterliveCorrectionCoeff;
-
-				i++;
-			}
-			else if(gOSC_MODE.Mode != LA_MODE)
-			{
-				EPM570_GPIO_RS(SET);
-				Data_A = ~(GPIOB->IDR >> 8);
-
-				EPM570_GPIO_RS(RESET);
-				Data_B = ~(GPIOB->IDR >> 8);
-
-				if( (ActiveMode != &IntMIN_MAX) && (gSamplesWin.Sweep != 0) )
-				{
-					EPM570_GPIO_RS(SET);
-					EPM570_GPIO_RS(RESET);
-				}
-			}
-			else
-			{
-				EPM570_GPIO_RS(SET);
-				Data_A = ~(GPIOB->IDR >> 8);
-
-				EPM570_GPIO_RS(RESET);
-				Data_B = (GPIOB->IDR >> 8);
-			}
-
-			Host_Send_Byte(*pData);
-			Control_CRC = CRC8(*pData, Control_CRC);
+    /* Prepare SRAM to read, read and send data to Host */
+    EPM570_SRAM_ReadState(ENABLE);
 
 
-			if(i < 600)
-			{
-				pINFO->DATA[i] = (*pData) - 127;
-			}
-		}
+    DataLen = gHostRequest.DataLen;
+    while(gHostRequest.DataLen > 64000){ gHostRequest.DataLen -= 64000; FullPacked++; }
+    while((FullPacked > 0) || (gHostRequest.DataLen > 0))
+    {
+        if(FullPacked == 0)
+        {
+            DataCnt = gHostRequest.DataLen;
+            gHostRequest.DataLen = 0;
+        }
+        else
+        {
+            DataCnt = 64000;
+            FullPacked--;
+        }
 
-		/* send CRC to Host */
-		Host_Send_Byte( CRC8(0, Control_CRC) );
+        if((DataLen > 64000) && (DataCnt != 0)) host_delay(2000000);
 
-		TIM2->DIER |= TIM_DIER_UIE;
-	}
+        TIM2->DIER &= ~TIM_DIER_UIE;
 
-	/* Disable read state for SRAM */
-	EPM570_SRAM_ReadState(DISABLE);
+        Control_CRC = 0;
+        ResponseDataBufHeader[3] = (uint8_t)(DataCnt >> 10);
+        ResponseDataBufHeader[4] = (uint8_t)((DataCnt & 0x03FC) >> 2);
+        ResponseDataBufHeader[5] = (uint8_t)((DataCnt & 0x03) << 6);
 
-//	__enable_irq();
+        /* sending header */
+        for(i = 0; i < 8; i++) {
+            Host_Send_Byte(ResponseDataBufHeader[i]);
+            Control_CRC = CRC8(ResponseDataBufHeader[i], Control_CRC);
+        }
+
+        for(i = 0; i < DataCnt; i++)
+        {
+            if( (gOSC_MODE.Mode == OSC_MODE) && (gOSC_MODE.Interleave == TRUE) )
+            {
+                EPM570_GPIO_RS(SET);
+                Data_A = ~(GPIOB->IDR >> 8);
+
+                Host_Send_Byte(*pData);
+                Control_CRC = CRC8(*pData, Control_CRC);
+
+                EPM570_GPIO_RS(RESET);
+                Data_A = ~(GPIOB->IDR >> 8);
+                Data_A -= InterliveCorrectionCoeff;
+
+                i++;
+            }
+            else if(gOSC_MODE.Mode != LA_MODE)
+            {
+                EPM570_GPIO_RS(SET);
+                Data_A = ~(GPIOB->IDR >> 8);
+
+                EPM570_GPIO_RS(RESET);
+                Data_B = ~(GPIOB->IDR >> 8);
+
+                if( (ActiveMode != &IntMIN_MAX) && (gSamplesWin.Sweep != 0) )
+                {
+                    EPM570_GPIO_RS(SET);
+                    EPM570_GPIO_RS(RESET);
+                }
+            }
+            else
+            {
+                EPM570_GPIO_RS(SET);
+                Data_A = ~(GPIOB->IDR >> 8);
+
+                EPM570_GPIO_RS(RESET);
+                Data_B = (GPIOB->IDR >> 8);
+            }
+
+            Host_Send_Byte(*pData);
+            Control_CRC = CRC8(*pData, Control_CRC);
+
+
+            if(i < 600)
+            {
+                pINFO->DATA[i] = (*pData) - 127;
+            }
+        }
+
+        /* send CRC to Host */
+        Host_Send_Byte( CRC8(0, Control_CRC) );
+
+        TIM2->DIER |= TIM_DIER_UIE;
+    }
+
+    /* Disable read state for SRAM */
+    EPM570_SRAM_ReadState(DISABLE);
+
+//    __enable_irq();
 }
 
 
@@ -272,7 +283,7 @@ void Transmit_DataBuf_To_Host(void)
 int8_t Decoding_Command(uint8_t cmd_index, uint8_t* data)
 {
   if ( (cmd_index == 255) && (cmd_index >= HOST_CMD_CNT) ){
-  	return -1;
+      return -1;
   }
 
   /* Run respect command, return state */
@@ -287,59 +298,59 @@ int8_t Decoding_Command(uint8_t cmd_index, uint8_t* data)
   */
 static __inline void Host_RequestProcessing(IQueue_TypeDef *IQueue)
 {
-	if(gHostRequest.Request == Data_Request) {
-		/* LA mode */
-		if(pINFO == &DINFO_A) {
-			EPM570_SRAM_Write();
+    if(gHostRequest.Request == Data_Request) {
+        /* LA mode */
+        if(pINFO == &DINFO_A) {
+            EPM570_SRAM_Write();
 
-			RLE_CodeSend = FALSE;
-			Transmit_DataBuf_To_Host();
+            RLE_CodeSend = FALSE;
+            Transmit_DataBuf_To_Host();
 
-			if(EPM570_Get_LA_RLE_State() == ENABLE)
-			{
-				gHostRequest.DataLen = 256000;
-				RLE_CodeSend = TRUE;
-				Transmit_DataBuf_To_Host();
-			}
-		}
-		/* Oscilloscope mode */
-		else {
-			/* if channel A actived */
-			if(INFO_A.Mode.EN == RUN) {
-				/* if request for channel A start write to SRAM
-				 * if request for channel B write not necessary, data for ch B already in SRAM */
-				if(pINFO == &INFO_A) EPM570_SRAM_Write();
-			}
-			/* else if only channel B actived also start write to SRAM */
-			else if(INFO_B.Mode.EN == RUN) {
-				EPM570_SRAM_Write();
-			}
+            if(EPM570_Get_LA_RLE_State() == ENABLE)
+            {
+                gHostRequest.DataLen = 256000;
+                RLE_CodeSend = TRUE;
+                Transmit_DataBuf_To_Host();
+            }
+        }
+        /* Oscilloscope mode */
+        else {
+            /* if channel A actived */
+            if(INFO_A.Mode.EN == RUN) {
+                /* if request for channel A start write to SRAM
+                 * if request for channel B write not necessary, data for ch B already in SRAM */
+                if(pINFO == &INFO_A) EPM570_SRAM_Write();
+            }
+            /* else if only channel B actived also start write to SRAM */
+            else if(INFO_B.Mode.EN == RUN) {
+                EPM570_SRAM_Write();
+            }
 
-			Transmit_DataBuf_To_Host();
-			Analog_AutodividerMain();
-		}
-	}
-	else if(gHostRequest.Request == Calibrate_Request) {
-		Auto_CorrectZ_CH(gHostRequest.UserData);
-	}
-	else if(gHostRequest.Request == Bootoader_Request) {
-		/* Respont to Host */
-		Transmit_To_Host(IQueue->Data[0], &IQueue->Data[2], IQueue->Data[1]);
-		/* Starting bootloader */
-		Start_Bootloader();
-	}
-	else if (gHostRequest.Request == Disconnect) {
-		/* Respont to Host */
-		Transmit_To_Host(IQueue->Data[0], &IQueue->Data[2], IQueue->Data[1]);
-		/* Reset (default start in automode) */
-		Host_IQueue_ClearAll();
-		/* Small delay and reset */
-		delay_ms(100);
-		NVIC_SystemReset();
-	}
+            Transmit_DataBuf_To_Host();
+            Analog_AutodividerMain();
+        }
+    }
+    else if(gHostRequest.Request == Calibrate_Request) {
+        Auto_CorrectZ_CH(gHostRequest.UserData);
+    }
+    else if(gHostRequest.Request == Bootoader_Request) {
+        /* Respont to Host */
+        Transmit_To_Host(IQueue->Data[0], &IQueue->Data[2], IQueue->Data[1]);
+        /* Starting bootloader */
+        Start_Bootloader();
+    }
+    else if (gHostRequest.Request == Disconnect) {
+        /* Respont to Host */
+        Transmit_To_Host(IQueue->Data[0], &IQueue->Data[2], IQueue->Data[1]);
+        /* Reset (default start in automode) */
+        Host_IQueue_ClearAll();
+        /* Small delay and reset */
+        delay_ms(100);
+        NVIC_SystemReset();
+    }
 
-	/* Reset/Clear request */
-	Host_RequestReset();
+    /* Reset/Clear request */
+    Host_RequestReset();
 }
 
 
@@ -350,10 +361,10 @@ static __inline void Host_RequestProcessing(IQueue_TypeDef *IQueue)
   */
 void Host_RequestReset(void)
 {
-	gHostRequest.State = DISABLE;
-	gHostRequest.Request = NO_Request;
-	gHostRequest.UserData = 0;
-	gHostRequest.DataLen = 0;
+    gHostRequest.State = DISABLE;
+    gHostRequest.Request = NO_Request;
+    gHostRequest.UserData = 0;
+    gHostRequest.DataLen = 0;
 }
 
 
@@ -364,13 +375,13 @@ void Host_RequestReset(void)
   */
 FlagStatus Host_GetTerminateCmd(void)
 {
-	if(Host_IQueue_GetWorkIQueue() > 0) {
-		Host_RequestReset();
-		return SET;		// TERMINATE_CMD
-	}
-	else {
-		return RESET;
-	}
+    if(Host_IQueue_GetWorkIQueue() > 0) {
+        Host_RequestReset();
+        return SET;        // TERMINATE_CMD
+    }
+    else {
+        return RESET;
+    }
 }
 
 
@@ -381,7 +392,7 @@ FlagStatus Host_GetTerminateCmd(void)
   */
 static void host_delay(volatile uint32_t delay_cnt)
 {
-	while(delay_cnt > 0){ delay_cnt--; }
+    while(delay_cnt > 0){ delay_cnt--; }
 }
 
 
@@ -398,8 +409,8 @@ uint8_t CRC8_Buff(uint8_t *pBuff, uint16_t NumBytes)
 
    for(i = 0; i < NumBytes; i++)
    {
-	   crcBuff = CRC8(*pbuff, crcBuff);
-	   pbuff++;
+       crcBuff = CRC8(*pbuff, crcBuff);
+       pbuff++;
    }
 
    return (crcBuff);

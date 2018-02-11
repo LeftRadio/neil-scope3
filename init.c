@@ -440,15 +440,23 @@ static void EPM570_Init(void)
 
 	/* EPM570 Registers init*/
 	regInit = EPM570_Registers_Init();
-	if(regInit != eSUCCESS)
-	{
-		if(regInit == ERROR_D) LCD_PutColorStrig(20, 170, 0, "ERROR write/read EPM570 Decimatin register...", Red);
-		else if(regInit == ERROR_N) LCD_PutColorStrig(20, 170, 0, "ERROR write/read EPM570 NumSamples register...", Red);
+
+	if(regInit == ERROR_D) {
+		LCD_PutColorStrig(20, 170, 0, "ERROR write/read EPM570 Decimatin register...", Red);
+		host_send_str("ERROR write/read EPM570 Decimatin register...");
+	}
+	else if(regInit == ERROR_N){
+		LCD_PutColorStrig(20, 170, 0, "ERROR write/read EPM570 NumSamples register...", Red);
+		host_send_str("ERROR write/read EPM570 NumSamples register...");
+	}
+
+	if(regInit != eSUCCESS) {
 		ExHardware_Init_ERROR();
 	}
 
 	Xstr = LCD_PutColorStrig(20, 170, 0, "SUCCESSFUL ", LightGreen);
 	LCD_PutColorStrig(Xstr, 170, 0, "write/read EPM570 registers...", White);
+	host_send_str("SUCCESSFUL write/read EPM570 registers...");
 
 	delay_ms(1);
 	EPM570_Set_numPoints(20);
@@ -458,6 +466,7 @@ static void EPM570_Init(void)
 	if(EPM570_SRAM_Write() == STOP)
 	{
 		LCD_PutColorStrig(20, 150, 0, "ERROR write cycle SRAM...", Red);
+		host_send_str("ERROR write cycle SRAM...");
 		ExHardware_Init_ERROR();
 	}
 
@@ -465,6 +474,7 @@ static void EPM570_Init(void)
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
 	Xstr = LCD_PutColorStrig(20, 150, 0, "SUCCESSFUL ", LightGreen);
 	LCD_PutColorStrig(Xstr, 150, 0, "write/read cycle SRAM...", White);
+	host_send_str("SUCCESSFUL write/read cycle SRAM...");
 }
 
 /**
@@ -478,7 +488,9 @@ static void ExHardware_Init_ERROR(void)
 	{
 		Beep_Start();
 		EPM570_Set_BackLight(0);
+		host_send_str("external hardware error!");
 		delay_ms(1000);
+		host_send_str("verify hardware or EPM570 firmware and try again");
 		EPM570_Set_BackLight(1);
 		delay_ms(1000);
 	}
@@ -535,6 +547,7 @@ void External_Peripheral_Init(void)
 	/* Set Font and print verification peripheral message */
 	LCD_SetFont(&timesNewRoman12ptFontInfo);
 	LCD_PutColorStrig(75, 200, 0, "VERIFICATION PERIPHERAL", LightGray3);
+	host_send_str("verify external peripheral...");
 	delay_ms(10);
 
 	/* Инициализируем порты под связь с EPM570 и инициализируем регистры ПЛИС */
